@@ -1,0 +1,25 @@
+# Build outputs
+dist
+dist-ssr
+*.local
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vite
+.vite/
+
+# Testing
+coverage
+.nyc_output
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Frontend specific
+public/build
+public/dist
+storybook-static 

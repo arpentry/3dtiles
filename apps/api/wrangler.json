@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "quadtree-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-02-12",
+  "vars": {
+    "SERVER_URL": "http://localhost:8787"
+  },
+  "assets": {
+    "directory": "public"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "quadtree-threejs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.11",
+    "@types/three": "^0.173.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.1.0"
+  },
+  "dependencies": {
+    "3d-tiles-renderer": "^0.4.8",
+    "cesium": "^1.126.0",
+    "three": "^0.173.0"
+  }
+}

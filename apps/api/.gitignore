@@ -1,0 +1,24 @@
+# Build outputs
+dist
+build
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage
+.nyc_output
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Backend specific
+.wrangler/
+.dev.vars
+uploads/
+*.db
+*.sqlite
+*.sqlite3 
