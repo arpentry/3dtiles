@@ -1,4 +1,4 @@
-import * as Cesium from "@cesium/engine";
+import * as Cesium from '@cesium/engine';
 
 /**
  * Generate a transform matrix from WGS84 coordinates

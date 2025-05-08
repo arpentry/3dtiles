@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.wrangler
+.vite
+
+# Coverage
+coverage
+
+# Generated files
+*.d.ts
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Cache
+.cache
+.eslintcache 

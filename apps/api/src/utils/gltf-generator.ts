@@ -1,4 +1,4 @@
-import { Document, NodeIO } from "@gltf-transform/core";
+import { Document, NodeIO } from '@gltf-transform/core';
 
 /**
  * Creates a cube glTF model representing a tile at the specified coordinates using gltf-transform
@@ -25,7 +25,7 @@ export async function getCube(
    * Material
    */
   const material = document
-    .createMaterial("cubeMaterial")
+    .createMaterial('cubeMaterial')
     .setBaseColorFactor([r, g, b, 1.0])
     .setMetallicFactor(0.0)
     .setRoughnessFactor(0.5);
@@ -33,7 +33,7 @@ export async function getCube(
   /**
    * Buffer
    */
-  const buffer = document.createBuffer("cubeBuffer");
+  const buffer = document.createBuffer('cubeBuffer');
 
   /**
    * Cube mesh
@@ -192,33 +192,33 @@ export async function getCube(
   const primitives = document
     .createPrimitive()
     .setAttribute(
-      "POSITION",
+      'POSITION',
       document
         .createAccessor()
         .setArray(positions)
-        .setType("VEC3")
+        .setType('VEC3')
         .setBuffer(buffer),
     )
     .setAttribute(
-      "NORMAL",
+      'NORMAL',
       document
         .createAccessor()
         .setArray(normals)
-        .setType("VEC3")
+        .setType('VEC3')
         .setBuffer(buffer),
     )
     .setIndices(
       document
         .createAccessor()
         .setArray(indices)
-        .setType("SCALAR")
+        .setType('SCALAR')
         .setBuffer(buffer),
     )
     .setMaterial(material);
 
-  const mesh = document.createMesh("cubeMesh").addPrimitive(primitives);
+  const mesh = document.createMesh('cubeMesh').addPrimitive(primitives);
 
-  const node = document.createNode("cubeNode").setMesh(mesh).setMatrix([
+  const node = document.createNode('cubeNode').setMesh(mesh).setMatrix([
     1,
     0,
     0,
@@ -237,19 +237,12 @@ export async function getCube(
     1, // Column 4
   ]); // This matrix rotates -90 degrees around X axis to convert Y-up to Z-up
 
-  const scene = document.createScene("cubeScene").addChild(node);
+  const scene = document.createScene('cubeScene').addChild(node);
 
   document.getRoot().listScenes().push(scene);
 
   /**
-   * Convert to binary GLTF
+   * Convert to binary GLTF and return
    */
-  const binary = await io.writeBinary(document);
-
-  return new Response(binary, {
-    headers: {
-      "Content-Type": "model/gltf-binary",
-      "Content-Disposition": `attachment; filename="tile_${level}_${x}_${y}.glb"`,
-    },
-  });
+  return io.writeBinary(document);
 }

@@ -1,7 +1,7 @@
-import { TilesRenderer, EnvironmentControls } from "3d-tiles-renderer";
-import * as THREE from "three";
-import { GUI } from "three/examples/jsm/libs/lil-gui.module.min.js";
-import { DebugTilesPlugin } from "../node_modules/3d-tiles-renderer/src/plugins";
+import { TilesRenderer, EnvironmentControls } from '3d-tiles-renderer';
+import * as THREE from 'three';
+import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
+import { DebugTilesPlugin } from '../node_modules/3d-tiles-renderer/src/plugins';
 
 const params = {
   errorTarget: 6,
@@ -24,7 +24,7 @@ const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
   1,
-  4000
+  4000,
 );
 camera.position.set(0, 1500, 0);
 camera.lookAt(0, 0, 0);
@@ -48,10 +48,10 @@ tilesParent.rotation.set(Math.PI / 2, 0, 0);
 scene.add(tilesParent);
 
 const tilesRenderer = new TilesRenderer(
-  "https://raw.githubusercontent.com/NASA-AMMOS/3DTilesSampleData/master/msl-dingo-gap/0528_0260184_to_s64o256_colorize/0528_0260184_to_s64o256_colorize/0528_0260184_to_s64o256_colorize_tileset.json"
+  'https://raw.githubusercontent.com/NASA-AMMOS/3DTilesSampleData/master/msl-dingo-gap/0528_0260184_to_s64o256_colorize/0528_0260184_to_s64o256_colorize/0528_0260184_to_s64o256_colorize_tileset.json',
 );
 tilesRenderer.registerPlugin(new DebugTilesPlugin());
-tilesRenderer.fetchOptions.mode = "cors";
+tilesRenderer.fetchOptions.mode = 'cors';
 tilesRenderer.lruCache.minSize = 900;
 tilesRenderer.lruCache.maxSize = 1300;
 tilesRenderer.errorTarget = 12;
@@ -62,12 +62,12 @@ tilesRenderer.errorTarget = 12;
 
 tilesParent.add(tilesRenderer.group);
 onWindowResize();
-window.addEventListener("resize", onWindowResize, false);
+window.addEventListener('resize', onWindowResize, false);
 
 const gui = new GUI();
 
-gui.add(params, "displayBoxBounds");
-gui.add(params, "errorTarget", 0, 100);
+gui.add(params, 'displayBoxBounds');
+gui.add(params, 'errorTarget', 0, 100);
 gui.open();
 
 function renderLoop() {
@@ -77,8 +77,8 @@ function renderLoop() {
   camera.updateMatrixWorld();
   tilesRenderer.errorTarget = params.errorTarget;
   const debugPlugin = tilesRenderer.getPluginByName(
-    "DEBUG_TILES_PLUGIN"
-  ) as any;
+    'DEBUG_TILES_PLUGIN',
+  ) as DebugTilesPlugin;
   debugPlugin.displayBoxBounds = params.displayBoxBounds;
 
   tilesRenderer.setCamera(camera);
