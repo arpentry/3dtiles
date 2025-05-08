@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "quadtree-api",
+  "name": "3dtiles-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-02-12",
   "vars": {

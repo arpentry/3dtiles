@@ -7,14 +7,13 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:api": "pnpm --filter quadtree-api lint",
-    "lint:web": "pnpm --filter quadtree-threejs lint",
-    "lint:api:fix": "pnpm --filter quadtree-api lint:fix",
-    "lint:web:fix": "pnpm --filter quadtree-threejs lint:fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "format:api": "prettier --write \"apps/api/**/*.{ts,tsx,js,jsx,json}\"",
-    "format:web": "prettier --write \"apps/web/**/*.{ts,tsx,js,jsx,json}\""
+    "lint:api": "pnpm --filter 3dtiles-api lint",
+    "lint:web": "pnpm --filter 3dtiles-web lint",
+    "lint:api:fix": "pnpm --filter 3dtiles-api lint:fix",
+    "lint:web:fix": "pnpm --filter 3dtiles-web lint:fix",
+    "deploy:api": "cd apps/api && pnpm install && pnpm wrangler deploy --minify",
+    "build:web": "cd apps/web && pnpm install && pnpm build",
+    "deploy:all": "pnpm run deploy:api && pnpm run build:web"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +24,6 @@
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "eslint": "^9.26.0",
-    "eslint-config-prettier": "^10.1.3",
-    "prettier": "^3.5.0"
+    "eslint-config-prettier": "^10.1.3"
   }
 }
