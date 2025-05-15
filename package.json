@@ -5,15 +5,17 @@
   "description": "",
   "private": true,
   "scripts": {
+    "dev": "pnpm --parallel dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:api": "pnpm --filter 3dtiles-api lint",
     "lint:web": "pnpm --filter 3dtiles-web lint",
     "lint:api:fix": "pnpm --filter 3dtiles-api lint:fix",
     "lint:web:fix": "pnpm --filter 3dtiles-web lint:fix",
-    "deploy:api": "cd apps/api && pnpm install && pnpm wrangler deploy --minify",
-    "build:web": "cd apps/web && pnpm install && pnpm build",
-    "deploy:all": "pnpm run deploy:api && pnpm run build:web"
+    "deploy:api": "pnpm --filter 3dtiles-api run deploy",
+    "build:web": "pnpm --filter 3dtiles-web run build",
+    "deploy:web": "pnpm build:web && pnpm --filter 3dtiles-web run deploy",
+    "deploy:all": "pnpm --parallel deploy"
   },
   "keywords": [],
   "author": "",

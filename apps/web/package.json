@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "deploy": "pnpm build && wrangler pages deploy dist",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -17,7 +18,8 @@
     "@types/three": "^0.173.0",
     "prettier": "^3.5.0",
     "typescript": "~5.7.2",
-    "vite": "^6.1.0"
+    "vite": "^6.1.0",
+    "wrangler": "4"
   },
   "dependencies": {
     "3d-tiles-renderer": "^0.4.8",
