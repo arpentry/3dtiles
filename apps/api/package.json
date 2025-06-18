@@ -9,6 +9,7 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md}\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.830.0",
     "@cesium/engine": "^15.0.0",
     "@gltf-transform/core": "^4.1.2",
     "@gltf-transform/extensions": "^4.1.2",
