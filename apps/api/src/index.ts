@@ -196,7 +196,7 @@ app.get('/tile/:level/:x/:y/file.tif', async (c) => {
     console.log('tileBbox (EPSG:3857):', tileBbox);
 
     // Read the raster data for the specific tile region
-    const raster: ReadRasterResult = await image.readRasters({
+    const raster: ReadRasterResult = await tiff.readRasters({
       bbox: tileBbox,
     });
 
