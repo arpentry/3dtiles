@@ -6,6 +6,7 @@ import { degToRad, LV95toWGS84, EPSG3857toWGS84, WGS84toEPSG3857, tileToRegion, 
 import { generateTransformMatrixFromWGS84 } from './utils/cesium';
 import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl, writeArrayBuffer } from 'geotiff';
 import tms from './tms';
+import glb from './glb';
 
 // Define environment variable types
 type Bindings = {
@@ -31,6 +32,7 @@ app.use(
 
 // Mount TMS routes
 app.route('/tms', tms);
+app.route('/glb', glb);
 
 /**
  * Endpoints
@@ -71,7 +73,5 @@ app.get('/subtrees', async (c) => {
 
   return c.json(subtreeTest);
 });
-
-
 
 export default app;

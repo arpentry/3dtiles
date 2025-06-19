@@ -140,8 +140,7 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
 
     return new Response(tiffBuffer, {
       headers: {
-        'Content-Type': 'image/tiff',
-        'Cache-Control': 'public, max-age=86400',
+        'Content-Type': 'image/tiff'
       },
     });
   } catch (error) {
