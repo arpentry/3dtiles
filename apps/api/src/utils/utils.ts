@@ -134,3 +134,93 @@ export function lonLatToTile(
 
   return { x, y };
 }
+
+/**
+ * Compute the bounding region of a quadtree tile in EPSG:3857 (Web Mercator) coordinates
+ * that results in square tiles with consistent pixel density.
+ *
+ * @param rootBounds   Full-extent bounds in EPSG:3857 for level 0 [minX, minY, maxX, maxY]
+ * @param level        0-based quadtree level
+ * @param x,y          Horizontal tile indices in that level (0 ≤ index < 2^level)
+ * @returns            Bounding region in WGS84 radians for 3D Tiles compatibility
+ */
+export function tileToRegionSquare(
+  rootBounds: [number, number, number, number], // [minX, minY, maxX, maxY] in EPSG:3857
+  level: number,
+  x: number,
+  y: number,
+): BoundingRegion {
+  const div = 1 << level; // 2^level
+  
+  // Calculate tile size in EPSG:3857 meters
+  const width = rootBounds[2] - rootBounds[0];
+  const height = rootBounds[3] - rootBounds[1];
+  const tileWidth = width / div;
+  const tileHeight = height / div;
+  
+  // Calculate EPSG:3857 bounds for this specific tile
+  const minX = rootBounds[0] + tileWidth * x;
+  const maxX = minX + tileWidth;
+  const minY = rootBounds[1] + tileHeight * y;
+  const maxY = minY + tileHeight;
+  
+  // Convert EPSG:3857 corners to WGS84
+  const [westDeg, southDeg] = EPSG3857toWGS84(minX, minY);
+  const [eastDeg, northDeg] = EPSG3857toWGS84(maxX, maxY);
+  
+  // Convert to radians for 3D Tiles compatibility
+  return {
+    west: degToRad(westDeg),
+    south: degToRad(southDeg),
+    east: degToRad(eastDeg),
+    north: degToRad(northDeg),
+    minH: 0,
+    maxH: 5000, // Adjust based on your use case
+  };
+}
+
+/**
+ * Get standard Web Mercator bounds for Switzerland
+ * These bounds ensure square tiles and good coverage of Swiss territory
+ */
+export function getSwissWebMercatorBounds(): [number, number, number, number] {
+  // Switzerland bounds in WGS84: approximately [5.95587, 45.81802, 10.49203, 47.80838]
+  const [minX, minY] = WGS84toEPSG3857(5.95587, 45.81802);
+  const [maxX, maxY] = WGS84toEPSG3857(10.49203, 47.80838);
+  
+  // Make bounds square by expanding the smaller dimension
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const maxSize = Math.max(width, height);
+  
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  
+  return [
+    centerX - maxSize / 2,
+    centerY - maxSize / 2,
+    centerX + maxSize / 2,
+    centerY + maxSize / 2,
+  ];
+}
+
+/**
+ * Create a square bounding box in EPSG:3857 that encompasses the given rectangular bounds
+ * This ensures proper TMS tile pyramid geometry with square tiles
+ */
+export function createSquareBounds(bbox: [number, number, number, number]): [number, number, number, number] {
+  const [minX, minY, maxX, maxY] = bbox;
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const maxSize = Math.max(width, height);
+  
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  
+  return [
+    centerX - maxSize / 2,
+    centerY - maxSize / 2,
+    centerX + maxSize / 2,
+    centerY + maxSize / 2,
+  ];
+}

@@ -16,9 +16,11 @@
     "@gltf-transform/core": "^4.1.2",
     "@gltf-transform/extensions": "^4.1.2",
     "@gltf-transform/functions": "^4.1.2",
+    "@mapbox/martini": "^0.2.0",
     "@types/proj4": "^2.5.6",
     "geotiff": "2.1.4-beta.0",
     "hono": "^4.6.20",
+    "pngjs": "^7.0.0",
     "proj4": "^2.15.0"
   },
   "devDependencies": {
