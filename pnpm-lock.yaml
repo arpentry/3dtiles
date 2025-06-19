@@ -38,6 +38,9 @@ importers:
       '@cesium/engine':
         specifier: ^15.0.0
         version: 15.0.0
+      '@cf-wasm/png':
+        specifier: ^0.1.24
+        version: 0.1.24
       '@gltf-transform/core':
         specifier: ^4.1.2
         version: 4.1.3
@@ -59,9 +62,6 @@ importers:
       hono:
         specifier: ^4.6.20
         version: 4.7.8
-      pngjs:
-        specifier: ^7.0.0
-        version: 7.0.0
       proj4:
         specifier: ^2.15.0
         version: 2.15.0
@@ -295,6 +295,9 @@ packages:
   '@cesium/widgets@12.0.0':
     resolution: {integrity: sha512-5Re06LU8lRPEZInHrpOCGBiLoj9VNJ0JJtPrzdnw1qhIDpf3v1W75OJf59k8CCFvUYkZzuTTi8qTVbpzmcbOuw==}
     engines: {node: '>=14.0.0'}
+
+  '@cf-wasm/png@0.1.24':
+    resolution: {integrity: sha512-ZxH2y4CBKETAhNNYQb5P66l9ix32sYVQs0OBYB2aE6hC+lAtYDJT6fdmqCtyKQVAQUm8AklY2pWeciFgZevlDQ==}
 
   '@cloudflare/kv-asset-handler@0.4.0':
     resolution: {integrity: sha512-+tv3z+SPp+gqTIcImN9o0hqE9xyfQjI1XD9pL6NuKjua9B1y7mNYv0S9cP+QEbA4ppVgGZEmKOvHX5G5Ei1CVA==}
@@ -3132,6 +3135,8 @@ snapshots:
     dependencies:
       '@cesium/engine': 17.0.0
       nosleep.js: 0.12.0
+
+  '@cf-wasm/png@0.1.24': {}
 
   '@cloudflare/kv-asset-handler@0.4.0':
     dependencies:

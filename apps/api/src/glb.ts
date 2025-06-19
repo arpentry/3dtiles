@@ -4,6 +4,7 @@ import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl } from 'geotiff';
 // @ts-ignore - @mapbox/martini doesn't have TypeScript declarations
 import Martini from '@mapbox/martini';
 import { Document, NodeIO } from '@gltf-transform/core';
+import { encode } from '@cf-wasm/png';
 
 // Define environment variable types
 type Bindings = {
@@ -24,6 +25,7 @@ glb.get('/:z/:x/:y.glb', async (c) => {
     const y = yWithExt ? yWithExt.replace('.glb', '') : '0';
     
     let elevation = 'swissalti3d/swissalti3d_web_mercator.tif';
+    let texture = 'swissimage-dop10/swissimage_web_mercator.tif';
   
     const levelNum = parseInt(z);
     const xNum = parseInt(x);
@@ -135,6 +137,58 @@ glb.get('/:z/:x/:y.glb', async (c) => {
           return c.json({ error: 'No valid elevation data in tile' }, 404);
       }
 
+      // Load texture GeoTIFF URL
+      const textureUrl = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texture}`;
+
+            // Load and resample texture GeoTIFF with same parameters as elevation
+      let texturePngBuffer: Uint8Array | null = null;
+      try {
+          const textureTiff: GeoTIFF = await fromUrl(textureUrl);
+          
+          const textureRaster: ReadRasterResult = await textureTiff.readRasters({ 
+              bbox: tileBbox,
+              width: tileSize,
+              height: tileSize,
+              fillValue: 0
+          });
+          
+          // Convert raster data to PNG using UPNG
+          if (textureRaster && Array.isArray(textureRaster)) {
+              const imageData = new Uint8Array(tileSize * tileSize * 4);
+              const numBands = textureRaster.length;
+              
+              for (let i = 0; i < tileSize * tileSize; i++) {
+                  const pixelIndex = i * 4;
+                  
+                  if (numBands >= 3) {
+                      // RGB or RGBA
+                      const r = textureRaster[0] as TypedArray;
+                      const g = textureRaster[1] as TypedArray;
+                      const b = textureRaster[2] as TypedArray;
+                      
+                      imageData[pixelIndex] = Number(r[i]) || 0;     // R
+                      imageData[pixelIndex + 1] = Number(g[i]) || 0; // G
+                      imageData[pixelIndex + 2] = Number(b[i]) || 0; // B
+                      imageData[pixelIndex + 3] = 255;              // A
+                  } else if (numBands === 1) {
+                      // Grayscale
+                      const gray = textureRaster[0] as TypedArray;
+                      const value = Number(gray[i]) || 0;
+                      
+                      imageData[pixelIndex] = value;     // R
+                      imageData[pixelIndex + 1] = value; // G
+                      imageData[pixelIndex + 2] = value; // B
+                      imageData[pixelIndex + 3] = 255;   // A
+                  }
+              }
+              
+              // Create PNG buffer using @cf-wasm/png
+              texturePngBuffer = encode(imageData, tileSize, tileSize);
+          }
+      } catch (error) {
+          console.warn('Failed to load texture GeoTIFF:', error);
+      }
+
       const document = new Document();
       const buffer = document.createBuffer();
 
@@ -145,6 +199,7 @@ glb.get('/:z/:x/:y.glb', async (c) => {
       const scaleY = tileHeight / tileSize;
 
       const positionArray = [];
+      const uvArray = [];
       for (let i = 0; i < validVertices.length; i += 2) {
           const x = validVertices[i];
           const y = validVertices[i + 1];
@@ -156,12 +211,21 @@ glb.get('/:z/:x/:y.glb', async (c) => {
           const worldY = minY + y * scaleY;
           
           positionArray.push(worldX, z, worldY);
+          
+          // Create UV coordinates (normalized to 0-1 range)
+          uvArray.push(x / tileSize, y / tileSize);
       }
 
       const positionBuffer = new Float32Array(positionArray);
       const positionAccessor = document.createAccessor()
           .setType('VEC3')
           .setArray(positionBuffer)
+          .setBuffer(buffer);
+
+      const uvBuffer = new Float32Array(uvArray);
+      const uvAccessor = document.createAccessor()
+          .setType('VEC2')
+          .setArray(uvBuffer)
           .setBuffer(buffer);
 
       const indexBuffer = new Uint16Array(validTriangles);
@@ -172,7 +236,22 @@ glb.get('/:z/:x/:y.glb', async (c) => {
 
       const primitive = document.createPrimitive()
           .setAttribute('POSITION', positionAccessor)
+          .setAttribute('TEXCOORD_0', uvAccessor)
           .setIndices(indexAccessor);
+
+      // Create material with resampled texture if available
+      if (texturePngBuffer) {
+          const baseColorTexture = document.createTexture("BaseColorTexture")
+              .setImage(texturePngBuffer)
+              .setMimeType('image/png');
+
+          const material = document.createMaterial()
+              .setBaseColorTexture(baseColorTexture)
+              .setBaseColorFactor([1.0, 1.0, 1.0, 1.0])
+              .setDoubleSided(true);
+
+          primitive.setMaterial(material);
+      }
 
       const mesh = document.createMesh('terrainMesh')
           .addPrimitive(primitive);
