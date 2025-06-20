@@ -27,8 +27,8 @@
     "wrangler": "4"
   },
   "dependencies": {
-    "3d-tiles-renderer": "^0.4.8",
+    "3d-tiles-renderer": "^0.4.10",
     "cesium": "^1.126.0",
-    "three": "^0.173.0"
+    "three": "^0.177.0"
   }
 }
