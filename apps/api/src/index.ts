@@ -32,46 +32,6 @@ app.use(
 
 // Mount TMS routes
 app.route('/tms', tms);
-app.route('/glb', glb);
-
-/**
- * Endpoints
- */
-app.get('/tileset', (c) => {
-  console.log('getting tileset');
-
-  // Use consistent square bounds for Swiss territory
-  const swissBounds = getSwissWebMercatorBounds();
-  const rootRegion = tileToRegionSquare(swissBounds, 0, 0, 0);
-
-  const TILESET_TEST = {
-    asset: {
-      version: '1.1',
-    },
-    geometricError: 2000,
-    root: {
-      boundingVolume: {
-        region: [rootRegion.west, rootRegion.south, rootRegion.east, rootRegion.north, 0, 2000],
-      },
-      geometricError: 2000,
-      refine: 'ADD',
-      content: { uri: '/content?level=0&x=0&y=0' },
-      children: [],
-      transform: generateTransformMatrixFromWGS84(rootRegion.west, rootRegion.south, 700, 100),
-    },
-  };
-
-  return c.json(TILESET_TEST);
-});
-
-app.get('/subtrees', async (c) => {
-  const { level, x, y } = c.req.query();
-
-  console.log('getting subtrees', level, x, y);
-
-  const subtreeTest = {};
-
-  return c.json(subtreeTest);
-});
+app.route('/', glb);
 
 export default app;
