@@ -119,7 +119,8 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
     const raster: ReadRasterResult = await tiff.readRasters({ 
       bbox: tileBbox,
       width: 512,
-      height: 512
+      height: 512,
+      fillValue: -9999
     });
     
     const pixelSizeX = (eastDeg - westDeg) / 512;
