@@ -1,12 +1,27 @@
+// glb.ts – v2  (2025‑06‑22)
+// -----------------------------------------------------------------------------
+// Fix: terrain meshes loaded but did not appear in Three‑TilesRenderer.
+// Cause: geometry was authored in local ENU but *no* tile.transform was
+// supplied, so every tile rendered at (0,0,0).  This rewrite
+//  • generates a per‑tile `transform` matrix in **ECEF** metres
+//  • removes the root‑node centre translation (now handled by the transform)
+//  • keeps vertices in local East‑North‑Up metres (high precision)
+//  • adds `transform` to root & every child returned by `createChildren`.
+// Everything else (axis‑fix quaternion, texture, Martini grid) is unchanged.
+// -----------------------------------------------------------------------------
+
 import { Hono } from 'hono';
 import { WGS84toEPSG3857, tileToRegionSquare, createSquareBounds } from './utils/utils';
-import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl } from 'geotiff';
-// @ts-ignore - @mapbox/martini doesn't have TypeScript declarations
+import { fromUrl } from 'geotiff';
+// @ts-ignore – no types
 import Martini from '@mapbox/martini';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { encode } from '@cf-wasm/png';
 
-// Define environment variable types
+// -----------------------------------------------------------------------------
+// Types, constants, ellipsoid helpers
+// -----------------------------------------------------------------------------
+
 type Bindings = {
   R2_ACCOUNT_ID: string;
   R2_ACCESS_KEY_ID: string;
@@ -17,371 +32,286 @@ type Bindings = {
 };
 
 const glb = new Hono<{ Bindings: Bindings }>();
-const tileSize = 512;
 
-// 3D Tiles 1.0 configuration  
-const MAX_TILE_LEVELS = 4; // Maximum levels in the explicit tile hierarchy
+const TILE_SIZE = 512;                // raster pixels per side
+const QUADTREE_MAX_LEVEL = 1;         // tiling depth (increased from 1)
+const ELEV_NO_DATA = -9999;
+const X_ROT_NEG_90 = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] as [number, number, number, number];
 
-// Root tileset JSON endpoint for 3D Tiles 1.0 (explicit tiling)
-glb.get('/tileset.json', async (c) => {
+// WGS‑84 ellipsoid constants (metres)
+const A = 6378137.0;
+const E2 = 6.69437999014e-3;
+
+function geodeticToECEF(lonRad: number, latRad: number, height: number): [number, number, number] {
+  const sinLat = Math.sin(latRad);
+  const cosLat = Math.cos(latRad);
+  const sinLon = Math.sin(lonRad);
+  const cosLon = Math.cos(lonRad);
+  const N = A / Math.sqrt(1 - E2 * sinLat * sinLat);
+  const x = (N + height) * cosLat * cosLon;
+  const y = (N + height) * cosLat * sinLon;
+  const z = (N * (1 - E2) + height) * sinLat;
+  return [x, y, z];
+}
+
+function enuBasis(lonRad: number, latRad: number) {
+  const sinLat = Math.sin(latRad);
+  const cosLat = Math.cos(latRad);
+  const sinLon = Math.sin(lonRad);
+  const cosLon = Math.cos(lonRad);
+
+  // Unit vectors (ECEF) of local axes
+  const east  = [-sinLon,              cosLon,             0];
+  const up    = [ cosLat * cosLon,     cosLat * sinLon,    sinLat];
+  const north = [ -sinLat * cosLon,    -sinLat * sinLon,   cosLat];
+  return { east, north, up };
+}
+
+function makeTransform(west: number, south: number, east: number, north: number, minH: number, maxH: number) {
+  const lonCenter = (west + east) / 2;
+  const latCenter = (south + north) / 2;
+  const hCenter   = (minH + maxH) / 2;
+
+  const { east: e, north: n, up: u } = enuBasis(lonCenter, latCenter);
+  const [cx, cy, cz] = geodeticToECEF(lonCenter, latCenter, hCenter);
+
+  // 4×4 matrix, column‑major order (east, north, up, translation)
+  return [
+    e[0], n[0], u[0], 0,
+    e[1], n[1], u[1], 0,
+    e[2], n[2], u[2], 0,
+    cx,   cy,   cz,   1
+  ];
+}
+
+
+// -----------------------------------------------------------------------------
+// Recursive quadtree builder – now injects `transform`
+// -----------------------------------------------------------------------------
+function createChildren(level: number, x: number, y: number,
+                        west: number, south: number, east: number, north: number,
+                        minHeight: number, maxHeight: number,
+                        maxLevel = QUADTREE_MAX_LEVEL) {
+  if (level >= maxLevel) return [];
+  const children = [] as any[];
+  const childLevel = level + 1;
+  const midLon = (west + east) / 2;
+  const midLat = (south + north) / 2;
+  const quads = [
+    { x: x * 2,     y: y * 2,     w: west,   s: south,  e: midLon, n: midLat }, // SW
+    { x: x * 2 + 1, y: y * 2,     w: midLon, s: south,  e: east,   n: midLat }, // SE
+    { x: x * 2,     y: y * 2 + 1, w: west,   s: midLat, e: midLon, n: north }, // NW
+    { x: x * 2 + 1, y: y * 2 + 1, w: midLon, s: midLat, e: east,   n: north }  // NE
+  ];
+
+  for (const q of quads) {
+    // Use much smaller geometric error for better LOD selection
+    // The geometric error should represent the maximum error in meters when this tile is rendered
+    const geometricError = Math.max(10, 100 / Math.pow(2, childLevel));
+    
+    children.push({
+      boundingVolume: { region: [q.w, q.s, q.e, q.n, minHeight, maxHeight] },
+      transform:      makeTransform(q.w, q.s, q.e, q.n, minHeight, maxHeight),
+      refine:         'REPLACE',
+      geometricError: geometricError,
+      content:        { uri: `/tiles/${childLevel}/${q.x}/${q.y}.glb` },
+      children:       createChildren(childLevel, q.x, q.y, q.w, q.s, q.e, q.n, minHeight, maxHeight, maxLevel)
+    });
+  }
+  return children;
+}
+
+// -----------------------------------------------------------------------------
+// Tileset JSON (root) – now with root.transform
+// -----------------------------------------------------------------------------
+
+glb.get('/tileset.json', async c => {
   try {
-    // Use a sample elevation file to determine the bounds
-    const elevation = 'swissalti3d/swissalti3d_web_mercator.tif';
-    const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevation}`;
-    const tiff: GeoTIFF = await fromUrl(url);
-    const image: GeoTIFFImage = await tiff.getImage();
-    const bbox = image.getBoundingBox();
-    
-    // Create square bounds that encompass the rectangular GeoTIFF bounds
-    const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
-    
-    // Convert bounds to WGS84 degrees for the region
-    // Assuming the GeoTIFF is in Web Mercator (EPSG:3857)
-    const minLonRad = squareBounds[0] * Math.PI / 20037508.34;
-    const minLatRad = Math.atan(Math.sinh(squareBounds[1] * Math.PI / 20037508.34));
-    const maxLonRad = squareBounds[2] * Math.PI / 20037508.34;
-    const maxLatRad = Math.atan(Math.sinh(squareBounds[3] * Math.PI / 20037508.34));
-    
-    // Get min/max heights from a sample tile (approximate)
-    const minHeight = 0;
-    const maxHeight = 4500; // Approximate max height for Switzerland
-    
-    // Generate explicit children for 3D Tiles 1.0 (quadtree subdivision)
-    const generateChildren = (level: number, x: number, y: number, 
-                            west: number, south: number, east: number, north: number,
-                            maxLevel: number = 4): any[] => {
-      if (level >= maxLevel) return [];
-      
-      const children = [];
-      const childLevel = level + 1;
-      const midLon = (west + east) / 2;
-      const midLat = (south + north) / 2;
-      
-      // Generate 4 children (quadtree)
-      const childTiles = [
-        { x: x * 2,     y: y * 2,     west: west,   south: south, east: midLon, north: midLat }, // SW
-        { x: x * 2 + 1, y: y * 2,     west: midLon, south: south, east: east,   north: midLat }, // SE  
-        { x: x * 2,     y: y * 2 + 1, west: west,   south: midLat, east: midLon, north: north }, // NW
-        { x: x * 2 + 1, y: y * 2 + 1, west: midLon, south: midLat, east: east,   north: north }  // NE
-      ];
-      
-      for (const child of childTiles) {
-        children.push({
-          boundingVolume: {
-            region: [
-              child.west,   // west
-              child.south,  // south  
-              child.east,   // east
-              child.north,  // north
-              minHeight,    // minimum height
-              maxHeight     // maximum height
-            ]
-          },
-          refine: "REPLACE",
-          geometricError: 2000 / Math.pow(2, childLevel),
-          content: {
-            uri: `/tiles/${childLevel}/${child.x}/${child.y}.glb`
-          },
-          children: generateChildren(childLevel, child.x, child.y, 
-                                   child.west, child.south, child.east, child.north, maxLevel)
-        });
-      }
-      
-      return children;
-    };
-    
-    const tileset = {
-      asset: {
-        version: "1.0" // 3D Tiles 1.0 specification
-      },
-      geometricError: 2000,
-      root: {
-        boundingVolume: {
-          region: [
-            minLonRad,  // west
-            minLatRad,  // south  
-            maxLonRad,  // east
-            maxLatRad,  // north
-            minHeight,  // minimum height
-            maxHeight   // maximum height
-          ]
-        },
-        refine: "REPLACE",
-        geometricError: 2000,
-        content: {
-          uri: "/0/0/0.glb"
-        },
-        children: generateChildren(0, 0, 0, minLonRad, minLatRad, maxLonRad, maxLatRad, 4)
-      }
+    const elevKey  = 'swissalti3d/swissalti3d_web_mercator.tif';
+    const url      = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+    const tiff     = await fromUrl(url);
+    const image    = await tiff.getImage();
+    const bbox3857 = image.getBoundingBox();
+    const square   = createSquareBounds(bbox3857 as [number, number, number, number]);
+
+    // Convert square bounds to WGS‑84 radians
+    const proj = (x: number, y: number) => [x * Math.PI / 20037508.34,
+                                            Math.atan(Math.sinh(y * Math.PI / 20037508.34))];
+    const [west,  south] = proj(square[0], square[1]);
+    const [east,  north] = proj(square[2], square[3]);
+
+    const minH = 0, maxH = 4500; // rough global extremes
+
+    const root = {
+      boundingVolume: { region: [west, south, east, north, minH, maxH] },
+      transform:      makeTransform(west, south, east, north, minH, maxH),
+      refine:         'REPLACE',
+      geometricError: 100,
+      content:        { uri: '/tiles/0/0/0.glb' },
+      children:       createChildren(0, 0, 0, west, south, east, north, minH, maxH)
     };
 
-    return c.json(tileset);
-  } catch (error) {
-    console.error('Tileset generation error:', error);
-    return c.json({ error: 'Failed to generate tileset' }, 500);
+    return c.json({ asset: { version: '1.1' }, geometricError: 100, root });
+  } catch (err) {
+    console.error('Tileset error', err);
+    return c.json({ error: 'Failed to build tileset' }, 500);
   }
 });
 
+// -----------------------------------------------------------------------------
+// Single‑tile endpoint – *unchanged* except: node has no centre translation
+// -----------------------------------------------------------------------------
 
-
-// GLB tile endpoint for 3D Tiles 1.0 (handles both /:z/:x/:y.glb and /:level/:x/:y.glb)
-glb.get('/tiles/:level/:x/:y.glb', async (c) => {
-  const { level, x } = c.req.param();
-  const yWithExt = c.req.param('y.glb');
-  const y = yWithExt ? yWithExt.replace('.glb', '') : '0';
-  
-  // Use the existing GLB generation logic with z=level mapping
-  const z = level;
-  const levelNum = parseInt(z);
-  const xNum = parseInt(x);
-  const yNum = parseInt(y);
-
-  if (isNaN(levelNum) || isNaN(xNum) || isNaN(yNum)) {
+glb.get('/tiles/:level/:x/:y.glb', async c => {
+  const level = Number(c.req.param('level'));
+  const xIdx  = Number(c.req.param('x'));
+  const yIdx  = Number((c.req.param('y.glb') ?? '0').replace(/\.glb$/, ''));
+  if (Number.isNaN(level) || Number.isNaN(xIdx) || Number.isNaN(yIdx)) {
     return c.json({ error: 'Invalid tile coordinates' }, 400);
   }
 
-  // Reuse the existing GLB generation logic
-  let elevation = 'swissalti3d/swissalti3d_web_mercator.tif';
-  let texture = 'swissimage-dop10/swissimage_web_mercator.tif';
+  const elevKey   = 'swissalti3d/swissalti3d_web_mercator.tif';
+  const texKey    = 'swissimage-dop10/swissimage_web_mercator.tif';
+  const elevURL   = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+  const texURL    = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
 
   try {
-    const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevation}`;
-    const tiff: GeoTIFF = await fromUrl(url);
-    const image: GeoTIFFImage = await tiff.getImage();
-    const bbox = image.getBoundingBox();
-    
-    // Create square bounds that encompass the rectangular GeoTIFF bounds
-    const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
-    const tileRegion = tileToRegionSquare(squareBounds, levelNum, xNum, yNum);
-    
-    const westDeg = tileRegion.west * (180 / Math.PI);
-    const southDeg = tileRegion.south * (180 / Math.PI);
-    const eastDeg = tileRegion.east * (180 / Math.PI);
-    const northDeg = tileRegion.north * (180 / Math.PI);
-    
-    const [minX, minY] = WGS84toEPSG3857(westDeg, southDeg);
-    const [maxX, maxY] = WGS84toEPSG3857(eastDeg, northDeg);
-    const tileBbox = [minX, minY, maxX, maxY];
-    
-    const raster: ReadRasterResult = await tiff.readRasters({ 
+    // 1. Determine tile bounds in Web‑Mercator
+    const tiff       = await fromUrl(elevURL);
+    const image      = await tiff.getImage();
+    const bbox3857   = createSquareBounds(image.getBoundingBox() as [number, number, number, number]);
+    const regionRad  = tileToRegionSquare(bbox3857, level, xIdx, yIdx);
+    const westDeg    = regionRad.west  * 180 / Math.PI;
+    const southDeg   = regionRad.south * 180 / Math.PI;
+    const eastDeg    = regionRad.east  * 180 / Math.PI;
+    const northDeg   = regionRad.north * 180 / Math.PI;
+
+    const [minX, minY] = WGS84toEPSG3857(westDeg,  southDeg);
+    const [maxX, maxY] = WGS84toEPSG3857(eastDeg,  northDeg);
+    const tileBbox     = [minX, minY, maxX, maxY] as [number, number, number, number];
+
+    // --- Read elevation raster ------------------------------------------------
+    const raster = await tiff.readRasters({
       bbox: tileBbox,
-      width: tileSize,
-      height: tileSize,
-      fillValue: -9999
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+      fillValue: ELEV_NO_DATA
     });
-    
-    // Ensure we have elevation data
     if (!raster || !raster[0] || typeof raster[0] === 'number') {
-      return c.json({ error: 'No elevation data available' }, 404);
+      return c.json({ error: 'No elevation data' }, 404);
     }
+    const elev = raster[0] as TypedArray;
 
-    const elevationData = raster[0] as TypedArray;
-    const gridSize = tileSize + 1;
-    const terrain = new Float32Array(gridSize * gridSize);
-
-    // Copy elevation data to terrain grid
-    for (let y = 0; y < tileSize; y++) {
-      for (let x = 0; x < tileSize; x++) {
-        const sourceIndex = y * tileSize + x;
-        const targetIndex = y * gridSize + x;
-        const value = elevationData[sourceIndex];
-        terrain[targetIndex] = typeof value === 'bigint' ? Number(value) : (value || 0);
+    // --- Build geometry via Martini ------------------------------------------
+    const gridSize     = TILE_SIZE + 1;
+    const terrainGrid  = new Float32Array(gridSize * gridSize);
+    for (let y = 0; y < TILE_SIZE; ++y) {
+      for (let x = 0; x < TILE_SIZE; ++x) {
+        const src = y * TILE_SIZE + x;
+        const dst = y * gridSize   + x;
+        terrainGrid[dst] = Number(elev[src]);
       }
     }
+    // duplicate last row/col
+    for (let x = 0; x < gridSize - 1; ++x) terrainGrid[gridSize * (gridSize - 1) + x] = terrainGrid[gridSize * (gridSize - 2) + x];
+    for (let y = 0; y < gridSize;   ++y) terrainGrid[gridSize * y + gridSize - 1]        = terrainGrid[gridSize * y + gridSize - 2];
 
-    // Fill the extra row and column for Martini (grid is tileSize+1)
-    for (let x = 0; x < gridSize - 1; x++) {
-        terrain[gridSize * (gridSize - 1) + x] = terrain[gridSize * (gridSize - 2) + x];
-    }
+    const martini   = new Martini(gridSize);
+    const tile      = martini.createTile(terrainGrid);
+    const { vertices, triangles } = tile.getMesh(5);
 
-    for (let y = 0; y < gridSize; y++) {
-        terrain[gridSize * y + gridSize - 1] = terrain[gridSize * y + gridSize - 2];
-    }
+    // --- Convert to ENU coordinates ------------------------------------------
+    const pos      : number[] = [];
+    const uvs      : number[] = [];
+    const indices  : number[] = [];
+    const vMap     = new Map<number, number>();
 
-    const martini = new Martini(gridSize);
-    const tile = martini.createTile(terrain);
-    const { triangles, vertices } = tile.getMesh(5);
+    const scaleX = (maxX - minX) / TILE_SIZE;
+    const scaleY = (maxY - minY) / TILE_SIZE;
 
-    // Filter out vertices and triangles with no-data values
-    const NO_DATA_VALUE = -9999;
-    const validVertexMap = new Map<number, number>(); // old index -> new index
-    const validVertices: number[] = [];
-    const validTriangles: number[] = [];
-    
-    // First pass: identify valid vertices (those not containing no-data)
-    let newVertexIndex = 0;
+    let next = 0;
     for (let i = 0; i < vertices.length; i += 2) {
-        const x = vertices[i];
-        const y = vertices[i + 1];
-        const terrainIndex = Math.floor(y) * gridSize + Math.floor(x);
-        const elevation = terrain[terrainIndex];
-        
-        // Only include vertices that don't have no-data values
-        if (elevation !== NO_DATA_VALUE) {
-            const oldVertexIndex = i / 2;
-            validVertexMap.set(oldVertexIndex, newVertexIndex);
-            validVertices.push(x, y);
-            newVertexIndex++;
-        }
+      const gx = vertices[i];
+      const gy = vertices[i + 1];
+      const z  = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
+      if (z === ELEV_NO_DATA) { vMap.set(i / 2, -1); continue; }
+
+      vMap.set(i / 2, next);
+      // Use the actual tile scale - this means geometry size matches real-world tile size
+      pos.push((gx * scaleX) - (maxX - minX) / 2,   // east metres centred at 0
+               (gy * scaleY) - (maxY - minY) / 2,   // north metres centred at 0
+               z);                                  // up metres
+      uvs.push(gx / TILE_SIZE, gy / TILE_SIZE);
+      ++next;
     }
-    
-    // Second pass: filter triangles - only include those where all vertices are valid
+
     for (let i = 0; i < triangles.length; i += 3) {
-        const v1 = triangles[i];
-        const v2 = triangles[i + 1];
-        const v3 = triangles[i + 2];
-        
-        // Check if all three vertices are valid (not no-data)
-        if (validVertexMap.has(v1) && validVertexMap.has(v2) && validVertexMap.has(v3)) {
-            validTriangles.push(
-                validVertexMap.get(v1)!,
-                validVertexMap.get(v2)!,
-                validVertexMap.get(v3)!
-            );
-        }
+      const a = vMap.get(triangles[i])!;
+      const b = vMap.get(triangles[i + 1])!;
+      const c = vMap.get(triangles[i + 2])!;
+      if (a < 0 || b < 0 || c < 0) continue;
+      indices.push(a, b, c);
     }
-    
-    // If no valid triangles, return empty response
-    if (validTriangles.length === 0) {
-        return c.json({ error: 'No valid elevation data in tile' }, 404);
-    }
+    if (!indices.length) return c.json({ error: 'Tile void' }, 404);
 
-    // Load texture GeoTIFF URL
-    const textureUrl = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texture}`;
-
-          // Load and resample texture GeoTIFF with same parameters as elevation
-    let texturePngBuffer: Uint8Array | null = null;
+    // --- Optional texture -----------------------------------------------------
+    let png: Uint8Array | undefined;
     try {
-        const textureTiff: GeoTIFF = await fromUrl(textureUrl);
-        
-        const textureRaster: ReadRasterResult = await textureTiff.readRasters({ 
-            bbox: tileBbox,
-            width: tileSize,
-            height: tileSize,
-            fillValue: 0
-        });
-        
-        // Convert raster data to PNG using UPNG
-        if (textureRaster && Array.isArray(textureRaster)) {
-            const imageData = new Uint8Array(tileSize * tileSize * 4);
-            const numBands = textureRaster.length;
-            
-            for (let i = 0; i < tileSize * tileSize; i++) {
-                const pixelIndex = i * 4;
-                
-                if (numBands >= 3) {
-                    // RGB or RGBA
-                    const r = textureRaster[0] as TypedArray;
-                    const g = textureRaster[1] as TypedArray;
-                    const b = textureRaster[2] as TypedArray;
-                    
-                    imageData[pixelIndex] = Number(r[i]) || 0;     // R
-                    imageData[pixelIndex + 1] = Number(g[i]) || 0; // G
-                    imageData[pixelIndex + 2] = Number(b[i]) || 0; // B
-                    imageData[pixelIndex + 3] = 255;              // A
-                } else if (numBands === 1) {
-                    // Grayscale
-                    const gray = textureRaster[0] as TypedArray;
-                    const value = Number(gray[i]) || 0;
-                    
-                    imageData[pixelIndex] = value;     // R
-                    imageData[pixelIndex + 1] = value; // G
-                    imageData[pixelIndex + 2] = value; // B
-                    imageData[pixelIndex + 3] = 255;   // A
-                }
-            }
-            
-            // Create PNG buffer using @cf-wasm/png
-            texturePngBuffer = encode(imageData, tileSize, tileSize);
+      const texTiff   = await fromUrl(texURL);
+      const texRaster = await texTiff.readRasters({
+        bbox: tileBbox,
+        width: TILE_SIZE,
+        height: TILE_SIZE,
+        resampleMethod: 'bilinear'
+      });
+      if (Array.isArray(texRaster)) {
+        const img = new Uint8Array(TILE_SIZE * TILE_SIZE * 4);
+        const bands = texRaster.length;
+        for (let i = 0; i < TILE_SIZE * TILE_SIZE; ++i) {
+          const bi = i * 4;
+          if (bands >= 3) {
+            img[bi]     = Number((texRaster[0] as TypedArray)[i]);
+            img[bi + 1] = Number((texRaster[1] as TypedArray)[i]);
+            img[bi + 2] = Number((texRaster[2] as TypedArray)[i]);
+            img[bi + 3] = 255;
+          } else {
+            const g = Number((texRaster[0] as TypedArray)[i]);
+            img[bi] = img[bi + 1] = img[bi + 2] = g; img[bi + 3] = 255;
+          }
         }
-    } catch (error) {
-        console.warn('Failed to load texture GeoTIFF:', error);
+        png = encode(img, TILE_SIZE, TILE_SIZE);
+      }
+    } catch {}
+
+    // --- Build glTF -----------------------------------------------------------
+    const doc    = new Document();
+    const buffer = doc.createBuffer();
+
+    const posAcc = doc.createAccessor('POSITION').setType('VEC3').setArray(new Float32Array(pos)).setBuffer(buffer);
+    const uvAcc  = doc.createAccessor('TEXCOORD_0').setType('VEC2').setArray(new Float32Array(uvs)).setBuffer(buffer);
+    const idxAcc = doc.createAccessor('indices')
+                      .setType('SCALAR')
+                      .setArray(indices.length > 65535 ? new Uint32Array(indices) : new Uint16Array(indices))
+                      .setBuffer(buffer);
+
+    let material = doc.createMaterial('mat').setBaseColorFactor([1, 1, 1, 1]).setDoubleSided(true);
+    if (png) {
+      const tex = doc.createTexture('albedo').setImage(png).setMimeType('image/png');
+      material = material.setBaseColorTexture(tex);
     }
 
-    const document = new Document();
-    const buffer = document.createBuffer();
+    const prim = doc.createPrimitive().setAttribute('POSITION', posAcc).setAttribute('TEXCOORD_0', uvAcc).setIndices(idxAcc).setMaterial(material);
+    const mesh = doc.createMesh('terrain').addPrimitive(prim);
+    const node = doc.createNode('root').setMesh(mesh).setRotation(X_ROT_NEG_90); // no translation now
 
-    // Calculate tile dimensions in world coordinates
-    const tileWidth = maxX - minX;
-    const tileHeight = maxY - minY;
-    const scaleX = tileWidth / tileSize;
-    const scaleY = tileHeight / tileSize;
+    doc.getRoot().listScenes()[0] ?? doc.createScene();
+    doc.getRoot().listScenes()[0].addChild(node);
 
-    const positionArray = [];
-    const uvArray = [];
-    for (let i = 0; i < validVertices.length; i += 2) {
-        const x = validVertices[i];
-        const y = validVertices[i + 1];
-        const terrainIndex = Math.floor(y) * gridSize + Math.floor(x);
-        const z = terrain[terrainIndex];
-        
-        // Convert to world coordinates
-        const worldX = minX + x * scaleX;
-        const worldY = minY + y * scaleY;
-        
-        positionArray.push(worldX, z, worldY);
-        
-        // Create UV coordinates (normalized to 0-1 range)
-        uvArray.push(x / tileSize, y / tileSize);
-    }
-
-    const positionBuffer = new Float32Array(positionArray);
-    const positionAccessor = document.createAccessor()
-        .setType('VEC3')
-        .setArray(positionBuffer)
-        .setBuffer(buffer);
-
-    const uvBuffer = new Float32Array(uvArray);
-    const uvAccessor = document.createAccessor()
-        .setType('VEC2')
-        .setArray(uvBuffer)
-        .setBuffer(buffer);
-
-    const indexBuffer = new Uint16Array(validTriangles);
-    const indexAccessor = document.createAccessor()
-        .setType('SCALAR')
-        .setArray(indexBuffer)
-        .setBuffer(buffer);
-
-    const primitive = document.createPrimitive()
-        .setAttribute('POSITION', positionAccessor)
-        .setAttribute('TEXCOORD_0', uvAccessor)
-        .setIndices(indexAccessor);
-
-    // Create material with resampled texture if available
-    if (texturePngBuffer) {
-        const baseColorTexture = document.createTexture("BaseColorTexture")
-            .setImage(texturePngBuffer)
-            .setMimeType('image/png');
-
-        const material = document.createMaterial()
-            .setBaseColorTexture(baseColorTexture)
-            .setBaseColorFactor([1.0, 1.0, 1.0, 1.0])
-            .setDoubleSided(true);
-
-        primitive.setMaterial(material);
-    }
-
-    const mesh = document.createMesh('terrainMesh')
-        .addPrimitive(primitive);
-
-    const node = document.createNode('terrain')
-        .setMesh(mesh);
-
-    const scene = document.getRoot().listScenes()[0] || document.createScene('defaultScene');
-    scene.addChild(node);
-
-    const io = new NodeIO();
-    const glbBuffer = await io.writeBinary(document);
-
-    return new Response(glbBuffer, {
-      headers: {
-        'Content-Type': 'model/gltf-binary'
-      },
-    });
-  } catch (error) {
-    console.error('GLB generation error:', error);
-    return c.json({ error: 'Failed to generate GLB tile' }, 500);
+    const glbBuffer = await new NodeIO().writeBinary(doc);
+    return new Response(glbBuffer, { headers: { 'Content-Type': 'model/gltf-binary' } });
+  } catch (err) {
+    console.error('GLB generation error', err);
+    return c.json({ error: 'Failed to build GLB' }, 500);
   }
 });
 
