@@ -35,10 +35,23 @@ if [ -d "downloads_swissalti3d" ]; then
         gdalbuildvrt -input_file_list ./files.txt ./files.vrt
         
         echo "  - Creating combined swissalti3d.tif..."
-        gdal_translate ./files.vrt swissalti3d.tif -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=DEFLATE -co NUM_THREADS=ALL_CPUS -co BIGTIFF=YES
-        
+        gdal_translate files.vrt swissalti3d.tif \
+            -of COG \
+            -co COMPRESS=DEFLATE \
+            -co BLOCKSIZE=512 \
+            -co OVERVIEWS=IGNORE_EXISTING \
+            -co NUM_THREADS=ALL_CPUS
+
         echo "  - Creating Web Mercator projection..."
-        gdalwarp -t_srs EPSG:3857 -r bilinear swissalti3d.tif swissalti3d_web_mercator.tif -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=DEFLATE -co NUM_THREADS=ALL_CPUS -co BIGTIFF=YES
+        gdalwarp
+            swissalti3d.tif swissalti3d_web_mercator.tif \
+            -t_srs EPSG:3857 -r bilinear -of COG \
+            -co TILING_SCHEME=GoogleMapsCompatible \
+            -co BLOCKSIZE=256 \
+            -co COMPRESS=DEFLATE \
+            -co OVERVIEW_RESAMPLING=AVERAGE \
+            -co OVERVIEW_COUNT=10 \
+            -co NUM_THREADS=ALL_CPUS
         
         echo "  ✓ swissalti3d processing completed!"
     else
@@ -65,11 +78,23 @@ if [ -d "downloads_swissimage-dop10" ]; then
         gdalbuildvrt -input_file_list ./files.txt ./files.vrt
         
         echo "  - Creating combined swissimage.tif..."
-        gdal_translate ./files.vrt swissimage.tif -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=DEFLATE -co NUM_THREADS=ALL_CPUS -co BIGTIFF=YES
-        
+        gdal_translate ./files.vrt swissimage.tif \
+            -of COG \
+            -co COMPRESS=DEFLATE \
+            -co BLOCKSIZE=512 \
+            -co OVERVIEWS=IGNORE_EXISTING \
+            -co NUM_THREADS=ALL_CPUS
+
         echo "  - Creating Web Mercator projection..."
-        gdalwarp -t_srs EPSG:3857 -r bilinear swissimage.tif swissimage_web_mercator.tif -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=DEFLATE -co NUM_THREADS=ALL_CPUS -co BIGTIFF=YES
-        
+        gdalwarp swissimage.tif swissimage_web_mercator.tif \
+            -t_srs EPSG:3857 -r bilinear -of COG \
+            -co TILING_SCHEME=GoogleMapsCompatible \
+            -co BLOCKSIZE=256 \
+            -co COMPRESS=DEFLATE \
+            -co OVERVIEW_RESAMPLING=AVERAGE \
+            -co OVERVIEW_COUNT=10 \
+            -co NUM_THREADS=ALL_CPUS
+            
         echo "  ✓ swissimage processing completed!"
     else
         echo "  ⚠ No .tif files found in downloads_swissimage-dop10"
