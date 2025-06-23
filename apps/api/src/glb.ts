@@ -1,13 +1,7 @@
-// glb.ts – v2  (2025‑06‑22)
+// glb.ts – Simplified 3D Tiles for Lausanne Terrain (Debug Version)
 // -----------------------------------------------------------------------------
-// Fix: terrain meshes loaded but did not appear in Three‑TilesRenderer.
-// Cause: geometry was authored in local ENU but *no* tile.transform was
-// supplied, so every tile rendered at (0,0,0).  This rewrite
-//  • generates a per‑tile `transform` matrix in **ECEF** metres
-//  • removes the root‑node centre translation (now handled by the transform)
-//  • keeps vertices in local East‑North‑Up metres (high precision)
-//  • adds `transform` to root & every child returned by `createChildren`.
-// Everything else (axis‑fix quaternion, texture, Martini grid) is unchanged.
+// Fixed coordinate system with consistent transformations for debugging
+// Uses consistent Web Mercator coordinates throughout
 // -----------------------------------------------------------------------------
 
 import { Hono } from 'hono';
@@ -19,7 +13,7 @@ import { Document, NodeIO } from '@gltf-transform/core';
 import { encode } from '@cf-wasm/png';
 
 // -----------------------------------------------------------------------------
-// Types, constants, ellipsoid helpers
+// Types and constants
 // -----------------------------------------------------------------------------
 
 type Bindings = {
@@ -33,164 +27,176 @@ type Bindings = {
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
-const TILE_SIZE = 512;                // raster pixels per side
-const QUADTREE_MAX_LEVEL = 1;         // tiling depth (increased from 1)
+// Simplified tile generation parameters
+const TILE_SIZE = 512;                // Reduced for faster debugging
+const QUADTREE_MAX_LEVEL = 2;         // More levels for better debugging
 const ELEV_NO_DATA = -9999;
-const X_ROT_NEG_90 = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] as [number, number, number, number];
 
-// WGS‑84 ellipsoid constants (metres)
-const A = 6378137.0;
-const E2 = 6.69437999014e-3;
-
-function geodeticToECEF(lonRad: number, latRad: number, height: number): [number, number, number] {
-  const sinLat = Math.sin(latRad);
-  const cosLat = Math.cos(latRad);
-  const sinLon = Math.sin(lonRad);
-  const cosLon = Math.cos(lonRad);
-  const N = A / Math.sqrt(1 - E2 * sinLat * sinLat);
-  const x = (N + height) * cosLat * cosLon;
-  const y = (N + height) * cosLat * sinLon;
-  const z = (N * (1 - E2) + height) * sinLat;
-  return [x, y, z];
-}
-
-function enuBasis(lonRad: number, latRad: number) {
-  const sinLat = Math.sin(latRad);
-  const cosLat = Math.cos(latRad);
-  const sinLon = Math.sin(lonRad);
-  const cosLon = Math.cos(lonRad);
-
-  // Unit vectors (ECEF) of local axes
-  const east  = [-sinLon,              cosLon,             0];
-  const up    = [ cosLat * cosLon,     cosLat * sinLon,    sinLat];
-  const north = [ -sinLat * cosLon,    -sinLat * sinLon,   cosLat];
-  return { east, north, up };
-}
-
-function makeTransform(west: number, south: number, east: number, north: number, minH: number, maxH: number) {
-  const lonCenter = (west + east) / 2;
-  const latCenter = (south + north) / 2;
-  const hCenter   = (minH + maxH) / 2;
-
-  const { east: e, north: n, up: u } = enuBasis(lonCenter, latCenter);
-  const [cx, cy, cz] = geodeticToECEF(lonCenter, latCenter, hCenter);
-
-  // 4×4 matrix, column‑major order (east, north, up, translation)
-  return [
-    e[0], n[0], u[0], 0,
-    e[1], n[1], u[1], 0,
-    e[2], n[2], u[2], 0,
-    cx,   cy,   cz,   1
-  ];
-}
-
+// Global coordinate system reference
+let GLOBAL_BOUNDS: [number, number, number, number] | null = null;
+let TILESET_CENTER: [number, number] | null = null;
 
 // -----------------------------------------------------------------------------
-// Recursive quadtree builder – now injects `transform`
+// Simplified tileset structure with natural BOX bounds
 // -----------------------------------------------------------------------------
-function createChildren(level: number, x: number, y: number,
-                        west: number, south: number, east: number, north: number,
-                        minHeight: number, maxHeight: number,
-                        maxLevel = QUADTREE_MAX_LEVEL) {
+
+function createTileChildren(level: number, x: number, y: number, minX: number, minY: number, maxX: number, maxY: number, minHeight: number, maxHeight: number, centerX: number, centerY: number, maxLevel = QUADTREE_MAX_LEVEL): Array<any> {
   if (level >= maxLevel) return [];
-  const children = [] as any[];
+
+  const children: Array<any> = [];
   const childLevel = level + 1;
-  const midLon = (west + east) / 2;
-  const midLat = (south + north) / 2;
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
   const quads = [
-    { x: x * 2,     y: y * 2,     w: west,   s: south,  e: midLon, n: midLat }, // SW
-    { x: x * 2 + 1, y: y * 2,     w: midLon, s: south,  e: east,   n: midLat }, // SE
-    { x: x * 2,     y: y * 2 + 1, w: west,   s: midLat, e: midLon, n: north }, // NW
-    { x: x * 2 + 1, y: y * 2 + 1, w: midLon, s: midLat, e: east,   n: north }  // NE
+    { x: x * 2, y: y * 2, minX, minY, maxX: midX, maxY: midY },         // SW
+    { x: x * 2 + 1, y: y * 2, minX: midX, minY, maxX, maxY: midY },     // SE
+    { x: x * 2, y: y * 2 + 1, minX, minY: midY, maxX: midX, maxY },     // NW
+    { x: x * 2 + 1, y: y * 2 + 1, minX: midX, minY: midY, maxX, maxY }  // NE
   ];
 
   for (const q of quads) {
-    // Use much smaller geometric error for better LOD selection
-    // The geometric error should represent the maximum error in meters when this tile is rendered
-    const geometricError = Math.max(10, 100 / Math.pow(2, childLevel));
+    const geometricError = Math.max(50, 2000 / Math.pow(2, childLevel));
+    
+    // Natural bounding box calculation - no rotation
+    const boxCenterX = ((q.minX + q.maxX) / 2) - centerX;    // X = easting (centered)
+    const boxCenterY = (minHeight + maxHeight) / 2;          // Y = elevation
+    const boxCenterZ = ((q.minY + q.maxY) / 2) - centerY;    // Z = northing (centered)
+    
+    const boxWidth = q.maxX - q.minX;     // X extent (easting)
+    const boxHeight = maxHeight - minHeight;  // Y extent (elevation)
+    const boxDepth = q.maxY - q.minY;     // Z extent (northing)
     
     children.push({
-      boundingVolume: { region: [q.w, q.s, q.e, q.n, minHeight, maxHeight] },
-      transform:      makeTransform(q.w, q.s, q.e, q.n, minHeight, maxHeight),
-      refine:         'REPLACE',
-      geometricError: geometricError,
-      content:        { uri: `/tiles/${childLevel}/${q.x}/${q.y}.glb` },
-      children:       createChildren(childLevel, q.x, q.y, q.w, q.s, q.e, q.n, minHeight, maxHeight, maxLevel)
+      boundingVolume: { 
+        box: [
+          boxCenterX, boxCenterY, boxCenterZ,  // center
+          boxWidth/2, 0, 0,                    // X axis half-extents (easting)
+          0, boxHeight/2, 0,                   // Y axis half-extents (elevation)
+          0, 0, boxDepth/2                     // Z axis half-extents (northing)
+        ]
+      },
+      refine: 'REPLACE',
+      geometricError,
+      content: { uri: `/tiles/${childLevel}/${q.x}/${q.y}.glb` },
+      children: createTileChildren(childLevel, q.x, q.y, q.minX, q.minY, q.maxX, q.maxY, minHeight, maxHeight, centerX, centerY, maxLevel)
     });
   }
+
   return children;
 }
 
 // -----------------------------------------------------------------------------
-// Tileset JSON (root) – now with root.transform
+// Tileset JSON endpoint with natural BOX bounds
 // -----------------------------------------------------------------------------
 
-glb.get('/tileset.json', async c => {
+glb.get('/tileset.json', async (c) => {
   try {
-    const elevKey  = 'swissalti3d/swissalti3d_web_mercator.tif';
-    const url      = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
-    const tiff     = await fromUrl(url);
-    const image    = await tiff.getImage();
+    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
+    const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+    const tiff = await fromUrl(url);
+    const image = await tiff.getImage();
     const bbox3857 = image.getBoundingBox();
-    const square   = createSquareBounds(bbox3857 as [number, number, number, number]);
+    const square = createSquareBounds(bbox3857 as [number, number, number, number]);
 
-    // Convert square bounds to WGS‑84 radians
-    const proj = (x: number, y: number) => [x * Math.PI / 20037508.34,
-                                            Math.atan(Math.sinh(y * Math.PI / 20037508.34))];
-    const [west,  south] = proj(square[0], square[1]);
-    const [east,  north] = proj(square[2], square[3]);
+    // Store global bounds for consistent coordinate system
+    GLOBAL_BOUNDS = square;
+    TILESET_CENTER = [(square[0] + square[2]) / 2, (square[1] + square[3]) / 2];
 
-    const minH = 0, maxH = 4500; // rough global extremes
+    const minH = 0, maxH = 4500; // Swiss terrain height range
+
+    console.log('🌍 Tileset coordinate system:', {
+      web_mercator_bounds: `${square[0].toFixed(0)}, ${square[1].toFixed(0)} to ${square[2].toFixed(0)}, ${square[3].toFixed(0)}`,
+      web_mercator_center: `${TILESET_CENTER[0].toFixed(0)}, ${TILESET_CENTER[1].toFixed(0)}`,
+      size_km: {
+        width: ((square[2] - square[0]) / 1000).toFixed(1),
+        height: ((square[3] - square[1]) / 1000).toFixed(1)
+      }
+    });
+
+    // Natural root bounding box calculation
+    const rootBoxCenterX = 0;                // X = easting (centered at origin)
+    const rootBoxCenterY = (minH + maxH) / 2;  // Y = elevation center
+    const rootBoxCenterZ = 0;                // Z = northing (centered at origin)
+    
+    const rootBoxWidth = square[2] - square[0];   // X extent (easting)
+    const rootBoxHeight = maxH - minH;            // Y extent (elevation)
+    const rootBoxDepth = square[3] - square[1];   // Z extent (northing)
+
+    console.log('📦 Natural Root bounding box:', {
+      center: `(${rootBoxCenterX.toFixed(0)}, ${rootBoxCenterY.toFixed(0)}, ${rootBoxCenterZ.toFixed(0)})`,
+      size: `${rootBoxWidth.toFixed(0)} × ${rootBoxHeight.toFixed(0)} × ${rootBoxDepth.toFixed(0)}`
+    });
 
     const root = {
-      boundingVolume: { region: [west, south, east, north, minH, maxH] },
-      transform:      makeTransform(west, south, east, north, minH, maxH),
-      refine:         'REPLACE',
-      geometricError: 100,
-      content:        { uri: '/tiles/0/0/0.glb' },
-      children:       createChildren(0, 0, 0, west, south, east, north, minH, maxH)
+      boundingVolume: { 
+        box: [
+          rootBoxCenterX, rootBoxCenterY, rootBoxCenterZ,  // center
+          rootBoxWidth/2, 0, 0,                            // X axis half-extents (easting)
+          0, rootBoxHeight/2, 0,                           // Y axis half-extents (elevation)
+          0, 0, rootBoxDepth/2                             // Z axis half-extents (northing)
+        ]
+      },
+      refine: 'REPLACE',
+      geometricError: 5000,
+      content: { uri: '/tiles/0/0/0.glb' },
+      children: createTileChildren(0, 0, 0, square[0], square[1], square[2], square[3], minH, maxH, TILESET_CENTER[0], TILESET_CENTER[1])
     };
 
-    return c.json({ asset: { version: '1.1' }, geometricError: 100, root });
+    return c.json({
+      asset: { version: '1.1' },
+      geometricError: 5000,
+      root
+    });
   } catch (err) {
-    console.error('Tileset error', err);
+    console.error('Tileset error:', err);
     return c.json({ error: 'Failed to build tileset' }, 500);
   }
 });
 
 // -----------------------------------------------------------------------------
-// Single‑tile endpoint – *unchanged* except: node has no centre translation
+// GLB tile endpoint with FIXED coordinates (centered)
 // -----------------------------------------------------------------------------
 
-glb.get('/tiles/:level/:x/:y.glb', async c => {
+glb.get('/tiles/:level/:x/:y.glb', async (c) => {
   const level = Number(c.req.param('level'));
-  const xIdx  = Number(c.req.param('x'));
-  const yIdx  = Number((c.req.param('y.glb') ?? '0').replace(/\.glb$/, ''));
-  if (Number.isNaN(level) || Number.isNaN(xIdx) || Number.isNaN(yIdx)) {
+  const x = Number(c.req.param('x'));
+  const y = Number((c.req.param('y') || '0').replace(/\.glb$/, ''));
+
+  console.log(`🏗️ Generating tile ${level}/${x}/${y}`);
+
+  if (isNaN(level) || isNaN(x) || isNaN(y)) {
     return c.json({ error: 'Invalid tile coordinates' }, 400);
   }
 
-  const elevKey   = 'swissalti3d/swissalti3d_web_mercator.tif';
-  const texKey    = 'swissimage-dop10/swissimage_web_mercator.tif';
-  const elevURL   = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
-  const texURL    = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
+  if (!GLOBAL_BOUNDS || !TILESET_CENTER) {
+    console.error('❌ Global bounds not initialized');
+    return c.json({ error: 'Global bounds not available' }, 500);
+  }
+
+  const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
+  const texKey = 'swissimage-dop10/swissimage_web_mercator.tif';
+  const elevURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+  const texURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
 
   try {
-    // 1. Determine tile bounds in Web‑Mercator
-    const tiff       = await fromUrl(elevURL);
-    const image      = await tiff.getImage();
-    const bbox3857   = createSquareBounds(image.getBoundingBox() as [number, number, number, number]);
-    const regionRad  = tileToRegionSquare(bbox3857, level, xIdx, yIdx);
-    const westDeg    = regionRad.west  * 180 / Math.PI;
-    const southDeg   = regionRad.south * 180 / Math.PI;
-    const eastDeg    = regionRad.east  * 180 / Math.PI;
-    const northDeg   = regionRad.north * 180 / Math.PI;
+    // 1. Calculate tile bounds using SAME coordinate system as tileset
+    const regionRad = tileToRegionSquare(GLOBAL_BOUNDS, level, x, y);
+    const westDeg = regionRad.west * 180 / Math.PI;
+    const southDeg = regionRad.south * 180 / Math.PI;
+    const eastDeg = regionRad.east * 180 / Math.PI;
+    const northDeg = regionRad.north * 180 / Math.PI;
 
-    const [minX, minY] = WGS84toEPSG3857(westDeg,  southDeg);
-    const [maxX, maxY] = WGS84toEPSG3857(eastDeg,  northDeg);
-    const tileBbox     = [minX, minY, maxX, maxY] as [number, number, number, number];
+    const [minX, minY] = WGS84toEPSG3857(westDeg, southDeg);
+    const [maxX, maxY] = WGS84toEPSG3857(eastDeg, northDeg);
+    const tileBbox = [minX, minY, maxX, maxY] as [number, number, number, number];
 
-    // --- Read elevation raster ------------------------------------------------
+    console.log(`   📍 Tile geographic: ${westDeg.toFixed(4)}°, ${southDeg.toFixed(4)}° to ${eastDeg.toFixed(4)}°, ${northDeg.toFixed(4)}°`);
+    console.log(`   📍 Tile Web Mercator: ${minX.toFixed(0)}, ${minY.toFixed(0)} to ${maxX.toFixed(0)}, ${maxY.toFixed(0)}`);
+    console.log(`   📏 Size: ${(maxX-minX).toFixed(0)}m × ${(maxY-minY).toFixed(0)}m`);
+
+    // 2. Read elevation raster
+    const tiff = await fromUrl(elevURL);
     const raster = await tiff.readRasters({
       bbox: tileBbox,
       width: TILE_SIZE,
@@ -202,49 +208,84 @@ glb.get('/tiles/:level/:x/:y.glb', async c => {
     }
     const elev = raster[0] as TypedArray;
 
-    // --- Build geometry via Martini ------------------------------------------
-    const gridSize     = TILE_SIZE + 1;
-    const terrainGrid  = new Float32Array(gridSize * gridSize);
-    for (let y = 0; y < TILE_SIZE; ++y) {
-      for (let x = 0; x < TILE_SIZE; ++x) {
-        const src = y * TILE_SIZE + x;
-        const dst = y * gridSize   + x;
+    // 3. Build geometry via Martini
+    const gridSize = TILE_SIZE + 1;
+    const terrainGrid = new Float32Array(gridSize * gridSize);
+    for (let row = 0; row < TILE_SIZE; ++row) {
+      for (let col = 0; col < TILE_SIZE; ++col) {
+        const src = row * TILE_SIZE + col;
+        const dst = row * gridSize + col;
         terrainGrid[dst] = Number(elev[src]);
       }
     }
-    // duplicate last row/col
-    for (let x = 0; x < gridSize - 1; ++x) terrainGrid[gridSize * (gridSize - 1) + x] = terrainGrid[gridSize * (gridSize - 2) + x];
-    for (let y = 0; y < gridSize;   ++y) terrainGrid[gridSize * y + gridSize - 1]        = terrainGrid[gridSize * y + gridSize - 2];
+    // Duplicate last row/col
+    for (let col = 0; col < gridSize - 1; ++col) {
+      terrainGrid[gridSize * (gridSize - 1) + col] = terrainGrid[gridSize * (gridSize - 2) + col];
+    }
+    for (let row = 0; row < gridSize; ++row) {
+      terrainGrid[gridSize * row + gridSize - 1] = terrainGrid[gridSize * row + gridSize - 2];
+    }
 
-    const martini   = new Martini(gridSize);
-    const tile      = martini.createTile(terrainGrid);
-    const { vertices, triangles } = tile.getMesh(5);
+    const martini = new Martini(gridSize);
+    const tile = martini.createTile(terrainGrid);
+    const { vertices, triangles } = tile.getMesh(10); // Higher error threshold for simpler meshes
 
-    // --- Convert to ENU coordinates ------------------------------------------
-    const pos      : number[] = [];
-    const uvs      : number[] = [];
-    const indices  : number[] = [];
-    const vMap     = new Map<number, number>();
+    // 4. CLEAN COORDINATE MAPPING - No rotations needed
+    const pos: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+    const vMap = new Map<number, number>();
 
-    const scaleX = (maxX - minX) / TILE_SIZE;
-    const scaleY = (maxY - minY) / TILE_SIZE;
+    // Calculate tile dimensions in meters  
+    const tileWidth = maxX - minX;   
+    const tileHeight = maxY - minY;  
 
     let next = 0;
+    let minElevation = Infinity;
+    let maxElevation = -Infinity;
+
     for (let i = 0; i < vertices.length; i += 2) {
-      const gx = vertices[i];
-      const gy = vertices[i + 1];
-      const z  = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
-      if (z === ELEV_NO_DATA) { vMap.set(i / 2, -1); continue; }
+      const gx = vertices[i];       // Grid X (0 to TILE_SIZE)
+      const gy = vertices[i + 1];   // Grid Y (0 to TILE_SIZE)
+      const elevation = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
+      
+      if (elevation === ELEV_NO_DATA) { 
+        vMap.set(i / 2, -1); 
+        continue;
+      }
 
       vMap.set(i / 2, next);
-      // Use the actual tile scale - this means geometry size matches real-world tile size
-      pos.push((gx * scaleX) - (maxX - minX) / 2,   // east metres centred at 0
-               (gy * scaleY) - (maxY - minY) / 2,   // north metres centred at 0
-               z);                                  // up metres
-      uvs.push(gx / TILE_SIZE, gy / TILE_SIZE);
+      
+      // NATURAL COORDINATE MAPPING:
+      // Grid coordinates → Web Mercator → Centered Three.js coordinates
+      const rasterX = minX + (gx / TILE_SIZE) * tileWidth;      // Web Mercator X (easting)
+      const rasterY = maxY - (gy / TILE_SIZE) * tileHeight;     // Web Mercator Y (northing) - Y-FLIPPED
+      
+      // Three.js coordinates (centered at origin)
+      const threejsX = rasterX - TILESET_CENTER[0];             // X = easting (centered)
+      const threejsY = elevation;                               // Y = elevation (up)
+      const threejsZ = rasterY - TILESET_CENTER[1];             // Z = northing (centered)
+      
+      pos.push(threejsX, threejsY, threejsZ);
+      uvs.push(gx / TILE_SIZE, 1.0 - (gy / TILE_SIZE));
+      
+      minElevation = Math.min(minElevation, elevation);
+      maxElevation = Math.max(maxElevation, elevation);
       ++next;
     }
 
+    console.log(`   ⛰️  Elevation range: ${minElevation.toFixed(0)}m to ${maxElevation.toFixed(0)}m`);
+    console.log(`   🔺 Vertices: ${next}, Triangles: ${triangles.length / 3}`);
+    console.log(`   🌍 Web Mercator bounds: X[${minX.toFixed(0)} to ${maxX.toFixed(0)}] Y[${minY.toFixed(0)} to ${maxY.toFixed(0)}]`);
+    console.log(`   🎯 Three.js coordinates: X[${(minX - TILESET_CENTER[0]).toFixed(0)} to ${(maxX - TILESET_CENTER[0]).toFixed(0)}] Y[${minElevation.toFixed(0)} to ${maxElevation.toFixed(0)}] Z[${(minY - TILESET_CENTER[1]).toFixed(0)} to ${(maxY - TILESET_CENTER[1]).toFixed(0)}] (Y-corrected)`);
+    
+    // Debug: Show sample vertex coordinates in natural mapping
+    console.log(`   📊 Sample vertices (X=easting, Y=elevation, Z=northing):`);
+    for (let i = 0; i < Math.min(9, pos.length); i += 3) {
+      console.log(`      Vertex ${i/3}: (${pos[i].toFixed(1)}, ${pos[i+1].toFixed(1)}, ${pos[i+2].toFixed(1)})`);
+    }
+
+    // 5. Build triangle indices
     for (let i = 0; i < triangles.length; i += 3) {
       const a = vMap.get(triangles[i])!;
       const b = vMap.get(triangles[i + 1])!;
@@ -252,12 +293,15 @@ glb.get('/tiles/:level/:x/:y.glb', async c => {
       if (a < 0 || b < 0 || c < 0) continue;
       indices.push(a, b, c);
     }
-    if (!indices.length) return c.json({ error: 'Tile void' }, 404);
+    if (!indices.length) {
+      console.warn('   ⚠️ No valid triangles generated');
+      return c.json({ error: 'Tile void' }, 404);
+    }
 
-    // --- Optional texture -----------------------------------------------------
+    // 6. Optional texture (simplified)
     let png: Uint8Array | undefined;
     try {
-      const texTiff   = await fromUrl(texURL);
+      const texTiff = await fromUrl(texURL);
       const texRaster = await texTiff.readRasters({
         bbox: tileBbox,
         width: TILE_SIZE,
@@ -270,48 +314,78 @@ glb.get('/tiles/:level/:x/:y.glb', async c => {
         for (let i = 0; i < TILE_SIZE * TILE_SIZE; ++i) {
           const bi = i * 4;
           if (bands >= 3) {
-            img[bi]     = Number((texRaster[0] as TypedArray)[i]);
+            img[bi] = Number((texRaster[0] as TypedArray)[i]);
             img[bi + 1] = Number((texRaster[1] as TypedArray)[i]);
             img[bi + 2] = Number((texRaster[2] as TypedArray)[i]);
             img[bi + 3] = 255;
           } else {
             const g = Number((texRaster[0] as TypedArray)[i]);
-            img[bi] = img[bi + 1] = img[bi + 2] = g; img[bi + 3] = 255;
+            img[bi] = img[bi + 1] = img[bi + 2] = g; 
+            img[bi + 3] = 255;
           }
         }
         png = encode(img, TILE_SIZE, TILE_SIZE);
+        console.log('   🖼️ Texture generated');
       }
-    } catch {}
-
-    // --- Build glTF -----------------------------------------------------------
-    const doc    = new Document();
-    const buffer = doc.createBuffer();
-
-    const posAcc = doc.createAccessor('POSITION').setType('VEC3').setArray(new Float32Array(pos)).setBuffer(buffer);
-    const uvAcc  = doc.createAccessor('TEXCOORD_0').setType('VEC2').setArray(new Float32Array(uvs)).setBuffer(buffer);
-    const idxAcc = doc.createAccessor('indices')
-                      .setType('SCALAR')
-                      .setArray(indices.length > 65535 ? new Uint32Array(indices) : new Uint16Array(indices))
-                      .setBuffer(buffer);
-
-    let material = doc.createMaterial('mat').setBaseColorFactor([1, 1, 1, 1]).setDoubleSided(true);
-    if (png) {
-      const tex = doc.createTexture('albedo').setImage(png).setMimeType('image/png');
-      material = material.setBaseColorTexture(tex);
+    } catch {
+      console.log('   🖼️ No texture (OK for debugging)');
     }
 
-    const prim = doc.createPrimitive().setAttribute('POSITION', posAcc).setAttribute('TEXCOORD_0', uvAcc).setIndices(idxAcc).setMaterial(material);
-    const mesh = doc.createMesh('terrain').addPrimitive(prim);
-    const node = doc.createNode('root').setMesh(mesh).setRotation(X_ROT_NEG_90); // no translation now
+    // 7. Build glTF with NO transformations
+    const doc = new Document();
+    const buffer = doc.createBuffer();
 
-    doc.getRoot().listScenes()[0] ?? doc.createScene();
-    doc.getRoot().listScenes()[0].addChild(node);
+    const positionAccessor = doc.createAccessor()
+      .setType('VEC3')
+      .setArray(new Float32Array(pos))
+      .setBuffer(buffer);
 
+    const uvAccessor = doc.createAccessor()
+      .setType('VEC2')
+      .setArray(new Float32Array(uvs))
+      .setBuffer(buffer);
+
+    const indexAccessor = doc.createAccessor()
+      .setType('SCALAR')
+      .setArray(indices.length > 65535 ? new Uint32Array(indices) : new Uint16Array(indices))
+      .setBuffer(buffer);
+
+    let material = doc.createMaterial()
+      .setBaseColorFactor([0.8, 0.8, 0.8, 1])  // Light gray for better visibility
+      .setDoubleSided(true);
+
+    if (png) {
+      const texture = doc.createTexture()
+        .setImage(png)
+        .setMimeType('image/png');
+      material = material.setBaseColorTexture(texture);
+    }
+
+    const primitive = doc.createPrimitive()
+      .setAttribute('POSITION', positionAccessor)
+      .setAttribute('TEXCOORD_0', uvAccessor)
+      .setIndices(indexAccessor)
+      .setMaterial(material);
+
+    const mesh = doc.createMesh().addPrimitive(primitive);
+    
+    // NO TRANSFORMATIONS - mesh uses centered coordinates
+    const node = doc.createNode().setMesh(mesh);
+
+    const scene = doc.getRoot().getDefaultScene() || doc.createScene();
+    scene.addChild(node);
+
+    // Export as GLB
     const glbBuffer = await new NodeIO().writeBinary(doc);
-    return new Response(glbBuffer, { headers: { 'Content-Type': 'model/gltf-binary' } });
+    console.log(`   ✅ GLB generated: ${glbBuffer.length} bytes`);
+    
+    return new Response(glbBuffer, {
+      headers: { 'Content-Type': 'model/gltf-binary' }
+    });
+
   } catch (err) {
-    console.error('GLB generation error', err);
-    return c.json({ error: 'Failed to build GLB' }, 500);
+    console.error('GLB generation error:', err);
+    return c.json({ error: 'Failed to generate tile' }, 500);
   }
 });
 
