@@ -98,7 +98,7 @@ process_with_gdal() {
         -r bilinear \
         -of COG \
         -co TILING_SCHEME=GoogleMapsCompatible \
-        -co BLOCKSIZE=256 \
+        -co BLOCKSIZE=512 \
         -co COMPRESS=DEFLATE \
         -co OVERVIEW_RESAMPLING=AVERAGE \
         -co OVERVIEW_COUNT=10 \

@@ -1,12 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-// import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getCube } from './utils/gltf-generator';
-import { degToRad, LV95toWGS84, EPSG3857toWGS84, WGS84toEPSG3857, tileToRegion, tileToRegionSquare, getSwissWebMercatorBounds, createSquareBounds, type BoundingRegion } from './utils/utils';
-import { generateTransformMatrixFromWGS84 } from './utils/cesium';
-import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl, writeArrayBuffer } from 'geotiff';
-import tms from './tms';
-import glb from './glb';
+
+import tms from './routes/tms';
+import glb from './routes/glb';
 
 // Define environment variable types
 type Bindings = {

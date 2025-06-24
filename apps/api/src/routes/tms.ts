@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl, writeArrayBuffer } from 'geotiff';
-import { WGS84toEPSG3857, tileToRegionSquare, createSquareBounds } from './utils/utils';
+import { tileToRegionSquare, createSquareBounds } from '../utils/geometry';
+import { WGS84toEPSG3857 } from '../utils/projections';
+import { getTiffMetadata } from '../services/raster';
 
 type Bindings = {
   R2_ACCOUNT_ID: string;
@@ -50,10 +52,7 @@ tms.get('/:tilemap', async (c) => {
 
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
-    const tiff: GeoTIFF = await fromUrl(url);
-    const image: GeoTIFFImage = await tiff.getImage();
-    const bbox = image.getBoundingBox();
-    // Use square bounds for consistent TMS geometry
+    const { bbox } = await getTiffMetadata(url);
     const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
 
     const tileMapXml = `<?xml version="1.0" encoding="UTF-8" ?>
@@ -103,6 +102,7 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
     const tiff: GeoTIFF = await fromUrl(url);
     const image: GeoTIFFImage = await tiff.getImage();
     const bbox = image.getBoundingBox();
+    
     // Create square bounds that encompass the rectangular GeoTIFF bounds
     const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
     const tileRegion = tileToRegionSquare(squareBounds, levelNum, xNum, yNum);
@@ -149,4 +149,4 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
   }
 });
 
-export default tms;
+export default tms; 
