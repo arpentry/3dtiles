@@ -52,3 +52,7 @@ coverage
 *.tmp
 *.temp
 .cache 
+
+# Downloads
+downloads_swissalti3d
+downloads_swissimage-dop10
