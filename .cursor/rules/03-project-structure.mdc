@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Structure
+
+The repository is organized in a monorepo using pnpm workspaces: [pnpm-workspace.yaml](mdc:pnpm-workspace.yaml). It contains the following:
+
+- **apps/api**: [package.json](mdc:apps/api/package.json)
+- **apps/web**: [package.json](mdc:apps/web/package.json)
+
+With the root package.json being: [package.json](mdc:package.json)
+
+- When executing command in specific workspaces, use the `--filter` flag.
