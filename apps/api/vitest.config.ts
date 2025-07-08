@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -14,8 +14,8 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        isolate: false
-      }
-    }
-  }
-}) 
+        isolate: false,
+      },
+    },
+  },
+});

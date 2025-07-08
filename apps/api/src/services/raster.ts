@@ -20,20 +20,20 @@ const ELEV_NO_DATA = -9999;
 export async function readElevationData(
   elevURL: string,
   tileBounds: TileBounds,
-  tileSize: number
+  tileSize: number,
 ): Promise<TypedArray> {
   const tiff = await fromUrl(elevURL);
   const raster = await tiff.readRasters({
     bbox: [tileBounds.minX, tileBounds.minY, tileBounds.maxX, tileBounds.maxY],
     width: tileSize,
     height: tileSize,
-    fillValue: ELEV_NO_DATA
+    fillValue: ELEV_NO_DATA,
   });
-  
+
   if (!raster || !raster[0] || typeof raster[0] === 'number') {
     throw new Error('No elevation data available');
   }
-  
+
   return raster[0] as TypedArray;
 }
 
@@ -43,24 +43,29 @@ export async function readElevationData(
 export async function generateTexture(
   texURL: string,
   tileBounds: TileBounds,
-  tileSize: number
+  tileSize: number,
 ): Promise<Uint8Array | undefined> {
   try {
     const texTiff = await fromUrl(texURL);
     const texRaster = await texTiff.readRasters({
-      bbox: [tileBounds.minX, tileBounds.minY, tileBounds.maxX, tileBounds.maxY],
+      bbox: [
+        tileBounds.minX,
+        tileBounds.minY,
+        tileBounds.maxX,
+        tileBounds.maxY,
+      ],
       width: tileSize,
       height: tileSize,
-      resampleMethod: 'bilinear'
+      resampleMethod: 'bilinear',
     });
-    
+
     if (!Array.isArray(texRaster)) {
       return undefined;
     }
-    
+
     const img = new Uint8Array(tileSize * tileSize * 4);
     const bands = texRaster.length;
-    
+
     for (let i = 0; i < tileSize * tileSize; ++i) {
       const bi = i * 4;
       if (bands >= 3) {
@@ -70,11 +75,11 @@ export async function generateTexture(
         img[bi + 3] = 255;
       } else {
         const g = Number((texRaster[0] as TypedArray)[i]);
-        img[bi] = img[bi + 1] = img[bi + 2] = g; 
+        img[bi] = img[bi + 1] = img[bi + 2] = g;
         img[bi + 3] = 255;
       }
     }
-    
+
     return encode(img, tileSize, tileSize);
   } catch {
     return undefined;
@@ -90,6 +95,6 @@ export async function getTiffMetadata(url: string) {
   return {
     bbox: image.getBoundingBox(),
     width: image.getWidth(),
-    height: image.getHeight()
+    height: image.getHeight(),
   };
-} 
+}

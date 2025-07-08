@@ -1,5 +1,11 @@
 import { Hono } from 'hono';
-import { GeoTIFF, GeoTIFFImage, ReadRasterResult, fromUrl, writeArrayBuffer } from 'geotiff';
+import {
+  GeoTIFF,
+  GeoTIFFImage,
+  ReadRasterResult,
+  fromUrl,
+  writeArrayBuffer,
+} from 'geotiff';
 import { tileToRegionSquare, createSquareBounds } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
 import { getTiffMetadata } from '../services/raster';
@@ -18,7 +24,7 @@ const tms = new Hono<{ Bindings: Bindings }>();
 // TMS Service Resource
 tms.get('/', (c) => {
   const baseUrl = `${c.req.url.split('/tms')[0]}`;
-  
+
   const serviceXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <TileMapService>
   <Title>TMS</Title>
@@ -53,7 +59,12 @@ tms.get('/:tilemap', async (c) => {
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
     const { bbox } = await getTiffMetadata(url);
-    const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
+    const squareBounds = createSquareBounds([
+      bbox[0],
+      bbox[1],
+      bbox[2],
+      bbox[3],
+    ]);
 
     const tileMapXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <TileMap>
@@ -76,7 +87,7 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
   const { tilemap, z, x } = c.req.param();
   const yWithExt = c.req.param('y.tif');
   const y = yWithExt ? yWithExt.replace('.tif', '') : '0';
-  
+
   let filename: string;
   switch (tilemap) {
     case 'swissimage-dop10':
@@ -102,38 +113,53 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
     const tiff: GeoTIFF = await fromUrl(url);
     const image: GeoTIFFImage = await tiff.getImage();
     const bbox = image.getBoundingBox();
-    
+
     // Create square bounds that encompass the rectangular GeoTIFF bounds
-    const squareBounds = createSquareBounds([bbox[0], bbox[1], bbox[2], bbox[3]]);
+    const squareBounds = createSquareBounds([
+      bbox[0],
+      bbox[1],
+      bbox[2],
+      bbox[3],
+    ]);
     const tileRegion = tileToRegionSquare(squareBounds, levelNum, xNum, yNum);
-    
+
     const westDeg = tileRegion.west * (180 / Math.PI);
     const southDeg = tileRegion.south * (180 / Math.PI);
     const eastDeg = tileRegion.east * (180 / Math.PI);
     const northDeg = tileRegion.north * (180 / Math.PI);
-    
+
     const [minX, minY] = WGS84toEPSG3857(westDeg, southDeg);
     const [maxX, maxY] = WGS84toEPSG3857(eastDeg, northDeg);
     const tileBbox = [minX, minY, maxX, maxY];
-    
-    const raster: ReadRasterResult = await tiff.readRasters({ 
+
+    const raster: ReadRasterResult = await tiff.readRasters({
       bbox: tileBbox,
       width: 512,
       height: 512,
-      fillValue: -9999
+      fillValue: -9999,
     });
-    
+
     const pixelSizeX = (eastDeg - westDeg) / 512;
     const pixelSizeY = (northDeg - southDeg) / 512;
     const [originX, originY] = WGS84toEPSG3857(westDeg, northDeg);
-    const [pixelSizeXMercator] = WGS84toEPSG3857(westDeg + pixelSizeX, northDeg);
-    const [, pixelSizeYMercator] = WGS84toEPSG3857(westDeg, northDeg - pixelSizeY);
-    
+    const [pixelSizeXMercator] = WGS84toEPSG3857(
+      westDeg + pixelSizeX,
+      northDeg,
+    );
+    const [, pixelSizeYMercator] = WGS84toEPSG3857(
+      westDeg,
+      northDeg - pixelSizeY,
+    );
+
     const metadata = {
       height: 512,
       width: 512,
       ProjectedCSTypeGeoKey: 3857,
-      ModelPixelScale: [Math.abs(pixelSizeXMercator - originX), Math.abs(pixelSizeYMercator - originY), 0],
+      ModelPixelScale: [
+        Math.abs(pixelSizeXMercator - originX),
+        Math.abs(pixelSizeYMercator - originY),
+        0,
+      ],
       ModelTiepoint: [0, 0, 0, originX, originY, 0],
     };
 
@@ -141,7 +167,7 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
 
     return new Response(tiffBuffer, {
       headers: {
-        'Content-Type': 'image/tiff'
+        'Content-Type': 'image/tiff',
       },
     });
   } catch (error) {
@@ -149,4 +175,4 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
   }
 });
 
-export default tms; 
+export default tms;

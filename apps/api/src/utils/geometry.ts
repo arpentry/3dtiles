@@ -2,12 +2,12 @@ import { WGS84toEPSG3857, EPSG3857toWGS84, degToRad } from './projections';
 
 /** A geographic bounding region as used by 3D Tiles 1.1 (radians + metres). */
 export interface BoundingRegion {
-  west:  number;  // longitude,  radians
-  south: number;  // latitude,   radians
-  east:  number;  // longitude,  radians
-  north: number;  // latitude,   radians
-  minH:  number;  // metres
-  maxH:  number;  // metres
+  west: number; // longitude,  radians
+  south: number; // latitude,   radians
+  east: number; // longitude,  radians
+  north: number; // latitude,   radians
+  minH: number; // metres
+  maxH: number; // metres
 }
 
 /**
@@ -23,21 +23,21 @@ export function tileToRegion(
   level: number,
   x: number,
   y: number,
-  splitH = false
+  splitH = false,
 ): BoundingRegion {
-  const div = 1 << level;                           // 2^level
-  const lonStep = (root.east  - root.west)  / div;  // Δλ per tile
-  const latStep = (root.north - root.south) / div;  // Δφ per tile
+  const div = 1 << level; // 2^level
+  const lonStep = (root.east - root.west) / div; // Δλ per tile
+  const latStep = (root.north - root.south) / div; // Δφ per tile
 
-  const west  = root.west  + lonStep * x;           // west → east is +λ
-  const east  = west + lonStep;
-  const south = root.south + latStep * y;           // south → north is +φ
+  const west = root.west + lonStep * x; // west → east is +λ
+  const east = west + lonStep;
+  const south = root.south + latStep * y; // south → north is +φ
   const north = south + latStep;
 
   let { minH, maxH } = root;
   if (splitH && level > 0) {
-    const hStep = (root.maxH - root.minH) / div;    // follow same rule for z (height)
-    minH = root.minH + hStep * y;                   // use y as proxy for z-slice; adapt if you store z
+    const hStep = (root.maxH - root.minH) / div; // follow same rule for z (height)
+    minH = root.minH + hStep * y; // use y as proxy for z-slice; adapt if you store z
     maxH = minH + hStep;
   }
   return { west, south, east, north, minH, maxH };
@@ -59,24 +59,22 @@ export function lonLatToTile(
   lon: number,
   lat: number,
 ): { x: number; y: number } {
-  if (lon < root.west || lon > root.east ||
-      lat < root.south || lat > root.north) {
-    throw new RangeError("Position is outside the root bounding region");
+  if (
+    lon < root.west ||
+    lon > root.east ||
+    lat < root.south ||
+    lat > root.north
+  ) {
+    throw new RangeError('Position is outside the root bounding region');
   }
 
-  const div   = 1 << level;                       // = 2^level
-  const sizeX = (root.east  - root.west)  / div;  // Δλ per tile
-  const sizeY = (root.north - root.south) / div;  // Δφ per tile
+  const div = 1 << level; // = 2^level
+  const sizeX = (root.east - root.west) / div; // Δλ per tile
+  const sizeY = (root.north - root.south) / div; // Δφ per tile
 
   // Compute zero-based indices (west→east, south→north)
-  const x = Math.min(
-    div - 1,
-    Math.floor((lon - root.west)  / sizeX),
-  );
-  const y = Math.min(
-    div - 1,
-    Math.floor((lat - root.south) / sizeY),
-  );
+  const x = Math.min(div - 1, Math.floor((lon - root.west) / sizeX));
+  const y = Math.min(div - 1, Math.floor((lat - root.south) / sizeY));
 
   return { x, y };
 }
@@ -97,23 +95,23 @@ export function tileToRegionSquare(
   y: number,
 ): BoundingRegion {
   const div = 1 << level; // 2^level
-  
+
   // Calculate tile size in EPSG:3857 meters
   const width = rootBounds[2] - rootBounds[0];
   const height = rootBounds[3] - rootBounds[1];
   const tileWidth = width / div;
   const tileHeight = height / div;
-  
+
   // Calculate EPSG:3857 bounds for this specific tile
   const minX = rootBounds[0] + tileWidth * x;
   const maxX = minX + tileWidth;
   const minY = rootBounds[1] + tileHeight * y;
   const maxY = minY + tileHeight;
-  
+
   // Convert EPSG:3857 corners to WGS84
   const [westDeg, southDeg] = EPSG3857toWGS84(minX, minY);
   const [eastDeg, northDeg] = EPSG3857toWGS84(maxX, maxY);
-  
+
   // Convert to radians for 3D Tiles compatibility
   return {
     west: degToRad(westDeg),
@@ -129,15 +127,17 @@ export function tileToRegionSquare(
  * Create a square bounding box in EPSG:3857 that encompasses the given rectangular bounds
  * This ensures proper TMS tile pyramid geometry with square tiles
  */
-export function createSquareBounds(bbox: [number, number, number, number]): [number, number, number, number] {
+export function createSquareBounds(
+  bbox: [number, number, number, number],
+): [number, number, number, number] {
   const [minX, minY, maxX, maxY] = bbox;
   const width = maxX - minX;
   const height = maxY - minY;
   const maxSize = Math.max(width, height);
-  
+
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
-  
+
   return [
     centerX - maxSize / 2,
     centerY - maxSize / 2,
@@ -154,19 +154,19 @@ export function getSwissWebMercatorBounds(): [number, number, number, number] {
   // Switzerland bounds in WGS84: approximately [5.95587, 45.81802, 10.49203, 47.80838]
   const [minX, minY] = WGS84toEPSG3857(5.95587, 45.81802);
   const [maxX, maxY] = WGS84toEPSG3857(10.49203, 47.80838);
-  
+
   // Make bounds square by expanding the smaller dimension
   const width = maxX - minX;
   const height = maxY - minY;
   const maxSize = Math.max(width, height);
-  
+
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
-  
+
   return [
     centerX - maxSize / 2,
     centerY - maxSize / 2,
     centerX + maxSize / 2,
     centerY + maxSize / 2,
   ];
-} 
+}
