@@ -72,14 +72,15 @@ export function createTileChildren(
   for (const q of quads) {
     const geometricError = Math.max(50, 2000 / Math.pow(2, childLevel));
 
-    // Natural bounding box calculation - no rotation
+    // Z-UP COORDINATE SYSTEM (3D Tiles standard):
+    // X = easting, Y = northing, Z = elevation (up)
     const boxCenterX = (q.minX + q.maxX) / 2 - centerX; // X = easting (centered)
-    const boxCenterY = (minHeight + maxHeight) / 2; // Y = elevation
-    const boxCenterZ = (q.minY + q.maxY) / 2 - centerY; // Z = northing (centered)
+    const boxCenterY = (q.minY + q.maxY) / 2 - centerY; // Y = northing (centered)
+    const boxCenterZ = (minHeight + maxHeight) / 2; // Z = elevation (up)
 
     const boxWidth = q.maxX - q.minX; // X extent (easting)
-    const boxHeight = maxHeight - minHeight; // Y extent (elevation)
-    const boxDepth = q.maxY - q.minY; // Z extent (northing)
+    const boxHeight = q.maxY - q.minY; // Y extent (northing)
+    const boxDepth = maxHeight - minHeight; // Z extent (elevation)
 
     children.push({
       boundingVolume: {
@@ -92,10 +93,10 @@ export function createTileChildren(
           0, // X axis half-extents (easting)
           0,
           boxHeight / 2,
-          0, // Y axis half-extents (elevation)
+          0, // Y axis half-extents (northing)
           0,
           0,
-          boxDepth / 2, // Z axis half-extents (northing)
+          boxDepth / 2, // Z axis half-extents (elevation)
         ],
       },
       refine: 'REPLACE',
@@ -131,14 +132,15 @@ export function createRootTile(
   maxH: number,
   maxLevel: number,
 ) {
-  // Natural root bounding box calculation
+  // Z-UP COORDINATE SYSTEM (3D Tiles standard):
+  // X = easting, Y = northing, Z = elevation (up)
   const rootBoxCenterX = 0; // X = easting (centered at origin)
-  const rootBoxCenterY = (minH + maxH) / 2; // Y = elevation center
-  const rootBoxCenterZ = 0; // Z = northing (centered at origin)
+  const rootBoxCenterY = 0; // Y = northing (centered at origin)
+  const rootBoxCenterZ = (minH + maxH) / 2; // Z = elevation center
 
   const rootBoxWidth = square[2] - square[0]; // X extent (easting)
-  const rootBoxHeight = maxH - minH; // Y extent (elevation)
-  const rootBoxDepth = square[3] - square[1]; // Z extent (northing)
+  const rootBoxHeight = square[3] - square[1]; // Y extent (northing)
+  const rootBoxDepth = maxH - minH; // Z extent (elevation)
 
   return {
     boundingVolume: {
@@ -151,10 +153,10 @@ export function createRootTile(
         0, // X axis half-extents (easting)
         0,
         rootBoxHeight / 2,
-        0, // Y axis half-extents (elevation)
+        0, // Y axis half-extents (northing)
         0,
         0,
-        rootBoxDepth / 2, // Z axis half-extents (northing)
+        rootBoxDepth / 2, // Z axis half-extents (elevation)
       ],
     },
     refine: 'REPLACE',
