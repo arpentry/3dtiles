@@ -21,7 +21,7 @@ check_dependencies() {
 
 # Data sources
 DATASOURCE_NAMES="swissalti3d swissimage-dop10"
-DATASOURCE_swissalti3d="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissalti3d/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2530539&yMin=1150522&xMax=2540550&yMax=1162600&csv=true"
+DATASOURCE_swissalti3d="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissalti3d/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2529405&yMin=1149425&xMax=2540443&yMax=1162528&csv=true"
 DATASOURCE_swissimage_dop10="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissimage-dop10/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2529405&yMin=1149425&xMax=2540443&yMax=1162528&csv=true"
 
 # Download function
