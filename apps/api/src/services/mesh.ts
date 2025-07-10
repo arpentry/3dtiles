@@ -107,7 +107,7 @@ export function mapCoordinates(
     const threejsZ = elevation; // Z = elevation (up)
 
     pos.push(threejsX, threejsY, threejsZ);
-    uvs.push(gx / tileSize, 1.0 - gy / tileSize);
+    uvs.push(gx / tileSize, gy / tileSize);
 
     minElevation = Math.min(minElevation, elevation);
     maxElevation = Math.max(maxElevation, elevation);
