@@ -139,8 +139,8 @@ function centerCameraOnBounds(bounds: THREE.Box3) {
   const size = bounds.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
-  // Position camera to see the entire tileset
-  const distance = maxDim * 2;
+  // Position camera further away to see the entire tileset
+  const distance = maxDim * 4; // Increased from 2 to 4 for more distance
   camera.position.set(
     center.x,
     center.y + distance * 0.7, // Above and slightly back
@@ -158,8 +158,8 @@ function centerCameraOnBounds(bounds: THREE.Box3) {
   });
 }
 
-// Initial position
-camera.position.set(0, 10000, 10000);
+// Initial position - moved further away for better overview
+camera.position.set(0, 30000, 30000);
 camera.lookAt(0, 0, 0);
 controls.update();
 
@@ -353,7 +353,7 @@ window.addEventListener('keydown', (event) => {
         const size = tilesetBounds.getSize(new THREE.Vector3());
         camera.position.set(
           center.x,
-          center.y + Math.max(size.x, size.z) * 1.5,
+          center.y + Math.max(size.x, size.z) * 3, // Increased from 1.5 to 3 for more distance
           center.z,
         );
         camera.lookAt(center);
@@ -492,7 +492,7 @@ window.addEventListener('keydown', (event) => {
 // Status display
 // -----------------------------------------------------------------------------
 
-console.log('🔧 SIMPLIFIED 3D TILES VIEWER (DEBUG MODE)');
+console.log('�� SIMPLIFIED 3D TILES VIEWER (DEBUG MODE)');
 console.log('📡 Loading tileset:', tilesUrl);
 console.log(
   '⌨️  Press H for help, C to center, F to find tiles, V to check visibility',
