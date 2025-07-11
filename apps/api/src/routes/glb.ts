@@ -68,7 +68,7 @@ glb.get('/tileset.json', async (c) => {
     );
 
     return c.json({
-      asset: { version: '1.1' },
+      asset: { version: '1.1', gltfUpAxis: 'Z' },
       geometricError: 5000,
       root,
     });
