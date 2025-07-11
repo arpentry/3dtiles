@@ -96,15 +96,15 @@ export function mapCoordinates(
 
     vMap.set(i / 2, next);
 
-    // Z-UP COORDINATE MAPPING (3D Tiles standard):
+    // NATURAL COORDINATE MAPPING:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates
     const rasterX = tileBounds.minX + (gx / tileSize) * tileWidth; // Web Mercator X (easting)
     const rasterY = tileBounds.maxY - (gy / tileSize) * tileHeight; // Web Mercator Y (northing) - Y-FLIPPED
 
-    // Three.js coordinates (centered at origin) - Z-UP SYSTEM
+    // Three.js coordinates (centered at origin)
     const threejsX = rasterX - tilesetCenter[0]; // X = easting (centered)
-    const threejsY = rasterY - tilesetCenter[1]; // Y = northing (centered)
-    const threejsZ = elevation; // Z = elevation (up)
+    const threejsY = elevation; // Y = elevation (up)
+    const threejsZ = rasterY - tilesetCenter[1]; // Z = northing (centered)
 
     pos.push(threejsX, threejsY, threejsZ);
     uvs.push(gx / tileSize, gy / tileSize);

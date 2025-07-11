@@ -75,7 +75,7 @@ function addCoordinateAxes() {
   const axesHelper = new THREE.AxesHelper(50000);
   scene.add(axesHelper);
   console.log(
-    '📐 World axes visible. Red: X (East), Green: Y (North), Blue: Z (Up/Elevation).',
+    '📐 World axes visible. Red: X (East), Green: Y (Up/Elevation), Blue: Z (North).',
   );
 }
 
@@ -481,7 +481,7 @@ window.addEventListener('keydown', (event) => {
   ✅ Ground grid aligned to tileset
   ✅ Tile bounding boxes (green)
   ✅ Tile center points (red spheres)
-  ✅ Coordinate axes (R=East, G=North, B=Up/Elevation)
+  ✅ Coordinate axes (R=East, G=Up, B=North)
   ✅ Frustum visibility checking
       `);
       break;
