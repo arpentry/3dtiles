@@ -37,7 +37,7 @@ export async function buildGltfDocument(
   let material = doc
     .createMaterial()
     .setBaseColorFactor([0.8, 0.8, 0.8, 1]) // Light gray for better visibility
-    .setDoubleSided(true);
+    .setDoubleSided(false);
 
   if (texture) {
     const gltfTexture = doc
