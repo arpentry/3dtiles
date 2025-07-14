@@ -100,7 +100,7 @@ export function createTileChildren(
       },
       refine: 'REPLACE',
       geometricError,
-      content: { uri: `/tiles/${childLevel}/${q.x}/${q.y}.glb` },
+      content: { uri: `/tiles/${childLevel}/${q.x}/${q.y}/tile.glb` },
       children: createTileChildren(
         childLevel,
         q.x,
@@ -159,7 +159,7 @@ export function createRootTile(
     },
     refine: 'REPLACE',
     geometricError: 5000,
-    content: { uri: '/tiles/0/0/0.glb' },
+    content: { uri: '/tiles/0/0/0/tile.glb' },
     children: createTileChildren(
       0,
       0,

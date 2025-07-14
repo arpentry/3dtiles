@@ -81,10 +81,10 @@ glb.get('/tileset.json', async (c) => {
 /**
  * GLB tile endpoint - generates individual terrain tiles
  */
-glb.get('/tiles/:level/:x/:y.glb', async (c) => {
+glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
   const level = Number(c.req.param('level'));
   const x = Number(c.req.param('x'));
-  const y = Number((c.req.param('y') || '0').replace(/\.glb$/, ''));
+  const y = Number(c.req.param('y'));
 
   console.log(`🏗️ Generating tile ${level}/${x}/${y}`);
 
@@ -167,7 +167,10 @@ glb.get('/tiles/:level/:x/:y.glb', async (c) => {
     console.log(`   ✅ GLB generated: ${glbBuffer.byteLength} bytes`);
 
     return new Response(glbBuffer, {
-      headers: { 'Content-Type': 'model/gltf-binary' },
+      headers: {
+        'Content-Type': 'model/gltf-binary',
+        'Content-Disposition': `attachment; filename="${level}-${x}-${y}.glb"`,
+      },
     });
   } catch (err) {
     console.error('GLB generation error:', err);
