@@ -75,11 +75,11 @@ export function createTileChildren(
     // Natural bounding box calculation - no rotation
     const boxCenterX = (q.minX + q.maxX) / 2 - centerX; // X = easting (centered)
     const boxCenterY = (minHeight + maxHeight) / 2; // Y = elevation
-    const boxCenterZ = (q.minY + q.maxY) / 2 - centerY; // Z = northing (centered)
+    const boxCenterZ = -((q.minY + q.maxY) / 2 - centerY); // Z = southing (centered)
 
     const boxWidth = q.maxX - q.minX; // X extent (easting)
     const boxHeight = maxHeight - minHeight; // Y extent (elevation)
-    const boxDepth = q.maxY - q.minY; // Z extent (northing)
+    const boxDepth = q.maxY - q.minY; // Z extent (northing) // TODO : check if needs to be flipped (like boxCenterZ)
 
     children.push({
       boundingVolume: {

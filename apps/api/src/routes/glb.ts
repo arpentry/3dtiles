@@ -26,7 +26,7 @@ const glb = new Hono<{ Bindings: Bindings }>();
 
 // Configuration
 const TILE_SIZE = 512;
-const QUADTREE_MAX_LEVEL = 2;
+const QUADTREE_MAX_LEVEL = 5;
 
 // Global coordinate system reference
 let GLOBAL_BOUNDS: [number, number, number, number] | null = null;
