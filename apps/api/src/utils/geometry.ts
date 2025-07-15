@@ -16,7 +16,7 @@ export interface BoundingRegion {
  * @param root     Full-extent region for level 0 (usually the implicit-root tile).
  * @param level    0-based quadtree level.
  * @param x,y      Horizontal tile indices in that level (0 ≤ index < 2^level).
- * @param splitH   If true, height is halved each level; otherwise height stays constant.
+ * @param splitH   If true, length is halved each level; otherwise length stays constant.
  */
 export function tileToRegion(
   root: BoundingRegion,
@@ -36,7 +36,7 @@ export function tileToRegion(
 
   let { minH, maxH } = root;
   if (splitH && level > 0) {
-    const hStep = (root.maxH - root.minH) / div; // follow same rule for z (height)
+    const hStep = (root.maxH - root.minH) / div; // follow same rule for z (length)
     minH = root.minH + hStep * y; // use y as proxy for z-slice; adapt if you store z
     maxH = minH + hStep;
   }
@@ -98,15 +98,15 @@ export function tileToRegionSquare(
 
   // Calculate tile size in EPSG:3857 meters
   const width = rootBounds[2] - rootBounds[0];
-  const height = rootBounds[3] - rootBounds[1];
+  const length = rootBounds[3] - rootBounds[1];
   const tileWidth = width / div;
-  const tileHeight = height / div;
+  const tileLength = length / div;
 
   // Calculate EPSG:3857 bounds for this specific tile
   const minX = rootBounds[0] + tileWidth * x;
   const maxX = minX + tileWidth;
-  const minY = rootBounds[1] + tileHeight * y;
-  const maxY = minY + tileHeight;
+  const minY = rootBounds[1] + tileLength * y;
+  const maxY = minY + tileLength;
 
   // Convert EPSG:3857 corners to WGS84
   const [westDeg, southDeg] = EPSG3857toWGS84(minX, minY);
@@ -132,8 +132,8 @@ export function createSquareBounds(
 ): [number, number, number, number] {
   const [minX, minY, maxX, maxY] = bbox;
   const width = maxX - minX;
-  const height = maxY - minY;
-  const maxSize = Math.max(width, height);
+  const length = maxY - minY;
+  const maxSize = Math.max(width, length);
 
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
@@ -157,8 +157,8 @@ export function getSwissWebMercatorBounds(): [number, number, number, number] {
 
   // Make bounds square by expanding the smaller dimension
   const width = maxX - minX;
-  const height = maxY - minY;
-  const maxSize = Math.max(width, height);
+  const length = maxY - minY;
+  const maxSize = Math.max(width, length);
 
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
