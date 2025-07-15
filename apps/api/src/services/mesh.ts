@@ -99,12 +99,12 @@ export function mapCoordinates(
     // NATURAL COORDINATE MAPPING:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates
     const rasterX = tileBounds.minX + (gx / tileSize) * tileWidth; // Web Mercator X (easting)
-    const rasterY = tileBounds.minY + (gy / tileSize) * tileHeight; // Web Mercator Y (northing) - NO FLIP
+    const rasterY = tileBounds.maxY - (gy / tileSize) * tileHeight; // Web Mercator Y (northing) - Y-FLIPPED
 
     // Three.js coordinates (centered at origin)
     const threejsX = rasterX - tilesetCenter[0]; // X = easting (centered)
     const threejsY = elevation; // Y = elevation (up)
-    const threejsZ = rasterY - tilesetCenter[1]; // Z = northing (centered)
+    const threejsZ = -(rasterY - tilesetCenter[1]); // Z = southing (centered)
 
     pos.push(threejsX, threejsY, threejsZ);
     uvs.push(gx / tileSize, gy / tileSize);
