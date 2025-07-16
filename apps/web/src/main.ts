@@ -15,6 +15,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(0x87ceeb); // Sky blue background
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 10;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.style.margin = '0';
 document.body.appendChild(renderer.domElement);
 
