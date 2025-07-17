@@ -113,16 +113,19 @@ process_with_gdal() {
 upload_to_r2() {
     local local_file="$1"
     local remote_key="$2"
+
+    local size=$(stat -f %z "$local_file")
+    local read_timeout=600
+    local connect_timeout=60
     
     echo "Uploading: $(basename "$local_file")"
     AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
     AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
-    aws s3api put-object \
-        --bucket "$R2_BUCKET_NAME" \
-        --key "$remote_key" \
-        --body "$local_file" \
+    aws s3 cp "$local_file" "s3://$R2_BUCKET_NAME/$remote_key" \
         --endpoint-url "$R2_ENDPOINT" \
-        --checksum-algorithm CRC32
+        --expected-size "$size" \
+        --cli-read-timeout "$read_timeout" \
+        --cli-connect-timeout "$connect_timeout"
 }
 
 # Upload processed files
