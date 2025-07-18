@@ -9,6 +9,7 @@ import {
   generateTerrainMesh,
   mapCoordinates,
   buildTriangleIndices,
+  computeVertexNormals,
 } from '../services/mesh';
 import { buildGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
@@ -36,19 +37,28 @@ let TILESET_CENTER: [number, number] | null = null;
  * Tileset JSON endpoint - provides 3D Tiles structure
  */
 glb.get('/tileset.json', async (c) => {
+  console.log('🌍 Tileset JSON endpoint');
   try {
-    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
+    const elevKey = 'downloads_swissalti3d/swissalti3d_web_mercator.tif';
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+    console.log('🌍 Elevation URL:', url);
 
+    console.log('🌍 Fetching elevation metadata...');
     const { bbox } = await getTiffMetadata(url);
+    console.log('🌍 Elevation metadata fetched');
+    console.log('🌍 Bounding box:', bbox);
+
+    console.log('🌍 Creating square bounds...');
     const square = createSquareBounds(bbox as [number, number, number, number]);
+    console.log('🌍 Square bounds created');
+    console.log('🌍 Square bounds:', square);
 
     // Store global bounds for consistent coordinate system
     GLOBAL_BOUNDS = square;
     TILESET_CENTER = [(square[0] + square[2]) / 2, (square[1] + square[3]) / 2];
 
-    const minH = 0,
-      maxH = 4500; // Swiss terrain height range
+    const minH = 0;
+    const maxH = 4500; // Swiss terrain height range
 
     console.log('🌍 Tileset coordinate system:', {
       web_mercator_bounds: `${square[0].toFixed(0)}, ${square[1].toFixed(0)} to ${square[2].toFixed(0)}, ${square[3].toFixed(0)}`,
@@ -97,7 +107,7 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
     return c.json({ error: 'Global bounds not available' }, 500);
   }
 
-  const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
+  const elevKey = 'downloads_swissalti3d/swissalti3d_web_mercator.tif';
   const texKey = 'swissimage-dop10/swissimage_web_mercator.tif';
   const elevURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
   const texURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
@@ -145,6 +155,12 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
       meshGeometry.vertexMap,
     );
 
+    // Compute normals and add to meshGeometry
+    meshGeometry.normals = computeVertexNormals(
+      meshGeometry.positions,
+      triangleIndices.indices,
+    );
+
     if (!triangleIndices.indices.length) {
       console.warn('   ⚠️ No valid triangles generated');
       return c.json({ error: 'Tile void' }, 404);
@@ -161,6 +177,7 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
       meshGeometry.positions,
       meshGeometry.uvs,
       triangleIndices.indices,
+      meshGeometry.normals,
       texture,
     );
 

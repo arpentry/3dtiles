@@ -16,6 +16,7 @@ export interface MeshGeometry {
   vertexMap: Map<number, number>;
   minElevation: number;
   maxElevation: number;
+  normals: number[]; // Added normals
 }
 
 export interface TriangleIndices {
@@ -60,6 +61,66 @@ export function generateTerrainMesh(
     triangles,
     terrainGrid,
   };
+}
+
+/**
+ * Compute per-vertex normals from positions and indices
+ */
+export function computeVertexNormals(
+  positions: number[],
+  indices: number[],
+): number[] {
+  const normals = new Float32Array(positions.length);
+  for (let i = 0; i < indices.length; i += 3) {
+    const ia = indices[i] * 3;
+    const ib = indices[i + 1] * 3;
+    const ic = indices[i + 2] * 3;
+
+    // Get vertex positions
+    const ax = positions[ia],
+      ay = positions[ia + 1],
+      az = positions[ia + 2];
+    const bx = positions[ib],
+      by = positions[ib + 1],
+      bz = positions[ib + 2];
+    const cx = positions[ic],
+      cy = positions[ic + 1],
+      cz = positions[ic + 2];
+
+    // Compute face normal
+    const abx = bx - ax,
+      aby = by - ay,
+      abz = bz - az;
+    const acx = cx - ax,
+      acy = cy - ay,
+      acz = cz - az;
+    const nx = aby * acz - abz * acy;
+    const ny = abz * acx - abx * acz;
+    const nz = abx * acy - aby * acx;
+
+    // Add face normal to each vertex normal
+    normals[ia] += nx;
+    normals[ia + 1] += ny;
+    normals[ia + 2] += nz;
+    normals[ib] += nx;
+    normals[ib + 1] += ny;
+    normals[ib + 2] += nz;
+    normals[ic] += nx;
+    normals[ic + 1] += ny;
+    normals[ic + 2] += nz;
+  }
+
+  // Normalize normals
+  for (let i = 0; i < normals.length; i += 3) {
+    const nx = normals[i],
+      ny = normals[i + 1],
+      nz = normals[i + 2];
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+    normals[i] = nx / len;
+    normals[i + 1] = ny / len;
+    normals[i + 2] = nz / len;
+  }
+  return Array.from(normals);
 }
 
 /**
@@ -114,12 +175,15 @@ export function mapCoordinates(
     ++next;
   }
 
+  // Normals will be computed after indices are built
+  // Return empty normals for now; caller should fill in
   return {
     positions: pos,
     uvs,
     vertexMap: vMap,
     minElevation,
     maxElevation,
+    normals: [],
   };
 }
 

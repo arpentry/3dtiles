@@ -1,11 +1,7 @@
-// main.ts – Simplified 3D Tiles Viewer (Debug Version)
-// -----------------------------------------------------------------------------
-// Focus on debuggability with clear coordinate system and tile visualization
-// -----------------------------------------------------------------------------
-
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TilesRenderer } from '3d-tiles-renderer';
+import { VertexNormalsHelper } from 'three/examples/jsm/helpers/VertexNormalsHelper.js';
 
 // -----------------------------------------------------------------------------
 // Scene setup
@@ -22,7 +18,6 @@ document.body.style.margin = '0';
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
 
 const camera = new THREE.PerspectiveCamera(
   60,
@@ -42,7 +37,7 @@ controls.maxDistance = 1000000;
 // Lighting
 // -----------------------------------------------------------------------------
 
-const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+const ambientLight = new THREE.AmbientLight(0x404040, 50);
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -68,6 +63,9 @@ let tilesetLoaded = false;
 let tilesLoadedCount = 0;
 let tilesetBounds: THREE.Box3 | null = null;
 let groundGrid: THREE.GridHelper | null = null;
+
+// Store all VertexNormalsHelpers for toggling
+const vertexNormalsHelpers: VertexNormalsHelper[] = [];
 
 // -----------------------------------------------------------------------------
 // Debug helpers
@@ -237,9 +235,65 @@ tilesRenderer.addEventListener('load-tile-set', () => {
   }, 1000); // Wait 1 second for initial tiles to load
 });
 
+const material = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+});
+
+// Compare two materials and log differences
+function compareMaterials(matA: THREE.Material, matB: THREE.Material) {
+  if (!matA || !matB) {
+    console.log('One or both materials are undefined');
+    return;
+  }
+  const keys = [
+    'type',
+    'color',
+    'metalness',
+    'roughness',
+    'emissive',
+    'map',
+    'normalMap',
+    'side',
+    'transparent',
+    'opacity',
+    'vertexColors',
+    'wireframe',
+  ];
+  keys.forEach((key) => {
+    const a = (matA as any)[key];
+    const b = (matB as any)[key];
+    if (a !== b) {
+      // Special handling for color objects
+      if (a && a.isColor && b && b.isColor) {
+        if (!a.equals(b)) {
+          console.log(`Material difference in ${key}:`, a, b);
+        }
+      } else {
+        console.log(`Material difference in ${key}:`, a, b);
+      }
+    }
+  });
+}
+
 tilesRenderer.addEventListener('load-model', (event) => {
   tilesLoadedCount++;
   const { scene: model, tile } = event as any;
+
+  // Debug: Log material and normals
+  model.traverse((obj: any) => {
+    if (obj.isMesh) {
+      // obj.material = material;
+      console.log(material);
+      console.log('Material:', obj.material);
+      compareMaterials(material, obj.material);
+      console.log('Normals:', obj.geometry.attributes.normal);
+      // Add VertexNormalsHelper for visualization
+      const helper = new VertexNormalsHelper(obj, 500, 0x00ff00);
+      helper.visible = false; // Hide by default
+      scene.add(helper);
+      vertexNormalsHelpers.push(helper);
+    }
+  });
 
   console.log(
     `🏔️ TILE ${tilesLoadedCount} LOADED: ${tile.content?.uri || 'Unknown'}`,
@@ -307,11 +361,11 @@ function animate() {
 
   controls.update();
 
-  // Update lighting to follow camera
-  directionalLight.position
-    .copy(camera.position)
-    .normalize()
-    .multiplyScalar(10000);
+  // // Update lighting to follow camera
+  // directionalLight.position
+  //   .copy(camera.position)
+  //   .normalize()
+  //   .multiplyScalar(10000);
 
   // Update tiles
   tilesRenderer.setCamera(camera);
@@ -447,6 +501,17 @@ window.addEventListener('keydown', (event) => {
       );
       break;
 
+    case 'n':
+      // Toggle vertex normals helpers
+      if (vertexNormalsHelpers.length > 0) {
+        const visible = !vertexNormalsHelpers[0].visible;
+        vertexNormalsHelpers.forEach((helper) => (helper.visible = visible));
+        console.log(`🔺 Vertex normals ${visible ? 'visible' : 'hidden'}`);
+      } else {
+        console.log('⚠️ No vertex normals helpers loaded yet');
+      }
+      break;
+
     case 'i':
       // Print info
       console.log('ℹ️ CURRENT STATE:');
@@ -475,6 +540,7 @@ window.addEventListener('keydown', (event) => {
   B - Toggle tile bounding boxes
   P - Toggle tile center points
   D - Toggle debug tile outlines
+  N - Toggle vertex normals helpers
   I - Print current state info
   H - Show this help
 
@@ -486,6 +552,7 @@ window.addEventListener('keydown', (event) => {
   ✅ Tile center points (red spheres)
   ✅ Coordinate axes (R=East, G=Up, B=North)
   ✅ Frustum visibility checking
+  ✅ Vertex normals helpers (green lines, N to toggle)
       `);
       break;
   }

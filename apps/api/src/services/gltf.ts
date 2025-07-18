@@ -7,6 +7,7 @@ export async function buildGltfDocument(
   positions: number[],
   uvs: number[],
   indices: number[],
+  normals?: number[],
   texture?: Uint8Array,
 ): Promise<Uint8Array> {
   const doc = new Document();
@@ -34,6 +35,15 @@ export async function buildGltfDocument(
     )
     .setBuffer(buffer);
 
+  let normalAccessor = undefined;
+  if (normals && normals.length > 0) {
+    normalAccessor = doc
+      .createAccessor()
+      .setType('VEC3')
+      .setArray(new Float32Array(normals))
+      .setBuffer(buffer);
+  }
+
   let material = doc
     .createMaterial()
     .setBaseColorFactor([0.8, 0.8, 0.8, 1]) // Light gray for better visibility
@@ -53,6 +63,10 @@ export async function buildGltfDocument(
     .setAttribute('TEXCOORD_0', uvAccessor)
     .setIndices(indexAccessor)
     .setMaterial(material);
+
+  if (normalAccessor) {
+    primitive.setAttribute('NORMAL', normalAccessor);
+  }
 
   const mesh = doc.createMesh().addPrimitive(primitive);
 
