@@ -1,3 +1,4 @@
 packages:
   - apps/web
+  - apps/web2
   - apps/api
