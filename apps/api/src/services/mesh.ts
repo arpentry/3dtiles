@@ -158,7 +158,7 @@ export function mapCoordinates(
     const threejsZ = -(rasterY - tilesetCenter[1]); // Z = southing (centered)
 
     pos.push(threejsX, threejsY, threejsZ);
-    uvs.push(gx / tileSize, gy / tileSize);
+    uvs.push(gx / (tileSize + 1), gy / (tileSize + 1));
 
     minElevation = Math.min(minElevation, elevation);
     maxElevation = Math.max(maxElevation, elevation);
