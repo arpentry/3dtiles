@@ -34,22 +34,12 @@ export function generateTerrainMesh(
   const terrainGrid = new Float32Array(gridSize * gridSize);
 
   // Fill grid from elevation data
-  for (let row = 0; row < tileSize; ++row) {
-    for (let col = 0; col < tileSize; ++col) {
-      const src = row * tileSize + col;
+  for (let row = 0; row < gridSize; ++row) {
+    for (let col = 0; col < gridSize; ++col) {
+      const src = row * gridSize + col;
       const dst = row * gridSize + col;
       terrainGrid[dst] = Number(elevationData[src]);
     }
-  }
-
-  // Duplicate last row/col for Martini
-  for (let col = 0; col < gridSize - 1; ++col) {
-    terrainGrid[gridSize * (gridSize - 1) + col] =
-      terrainGrid[gridSize * (gridSize - 2) + col];
-  }
-  for (let row = 0; row < gridSize; ++row) {
-    terrainGrid[gridSize * row + gridSize - 1] =
-      terrainGrid[gridSize * row + gridSize - 2];
   }
 
   const martini = new Martini(gridSize);
@@ -129,7 +119,7 @@ export function computeVertexNormals(
 export function mapCoordinates(
   vertices: Uint16Array,
   terrainGrid: Float32Array,
-  tileBounds: TileBounds,
+  clampedBbox: number[],
   tilesetCenter: [number, number],
   tileSize: number,
 ): MeshGeometry {
@@ -137,8 +127,8 @@ export function mapCoordinates(
   const uvs: number[] = [];
   const vMap = new Map<number, number>();
 
-  const tileWidth = tileBounds.maxX - tileBounds.minX;
-  const tileHeight = tileBounds.maxY - tileBounds.minY;
+  const tileWidth = clampedBbox[2] - clampedBbox[0];
+  const tileHeight = clampedBbox[3] - clampedBbox[1];
   const gridSize = tileSize + 1;
 
   let next = 0;
@@ -159,8 +149,8 @@ export function mapCoordinates(
 
     // NATURAL COORDINATE MAPPING:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates
-    const rasterX = tileBounds.minX + (gx / tileSize) * tileWidth; // Web Mercator X (easting)
-    const rasterY = tileBounds.maxY - (gy / tileSize) * tileHeight; // Web Mercator Y (northing) - Y-FLIPPED
+    const rasterX = clampedBbox[0] + (gx / tileSize) * (clampedBbox[2] - clampedBbox[0]); // Web Mercator X (easting)
+    const rasterY = clampedBbox[3] - (gy / tileSize) * (clampedBbox[3] - clampedBbox[1]); // Web Mercator Y (northing) - Y-FLIPPED
 
     // Three.js coordinates (centered at origin)
     const threejsX = rasterX - tilesetCenter[0]; // X = easting (centered)

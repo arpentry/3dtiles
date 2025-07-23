@@ -21,12 +21,35 @@ export async function readElevationData(
   elevURL: string,
   tileBounds: TileBounds,
   tileSize: number,
-): Promise<TypedArray> {
+): Promise<{ data: TypedArray; bbox: number[] }> {
   const tiff = await fromUrl(elevURL);
+  const image = await tiff.getImage();
+  const globalBbox = image.getBoundingBox();
+
+  // Calculate the size of one pixel in Mercator coordinates
+  const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
+  const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
+
+  // Expand the bounding box by one pixel on the right and bottom edges
+  const expandedBbox = [
+    tileBounds.minX,
+    tileBounds.minY - pixelHeight, // Extend south
+    tileBounds.maxX + pixelWidth, // Extend east
+    tileBounds.maxY,
+  ];
+
+  // Clamp the expanded bounding box to the global bounding box of the TIFF
+  const clampedBbox = [
+    Math.max(expandedBbox[0], globalBbox[0]),
+    Math.max(expandedBbox[1], globalBbox[1]),
+    Math.min(expandedBbox[2], globalBbox[2]),
+    Math.min(expandedBbox[3], globalBbox[3]),
+  ];
+
   const raster = await tiff.readRasters({
-    bbox: [tileBounds.minX, tileBounds.minY, tileBounds.maxX, tileBounds.maxY],
-    width: tileSize,
-    height: tileSize,
+    bbox: clampedBbox,
+    width: tileSize + 1,
+    height: tileSize + 1,
     fillValue: ELEV_NO_DATA,
   });
 
@@ -34,7 +57,7 @@ export async function readElevationData(
     throw new Error('No elevation data available');
   }
 
-  return raster[0] as TypedArray;
+  return { data: raster[0] as TypedArray, bbox: clampedBbox };
 }
 
 /**
