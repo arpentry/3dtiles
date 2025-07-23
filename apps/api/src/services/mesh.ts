@@ -34,22 +34,12 @@ export function generateTerrainMesh(
   const terrainGrid = new Float32Array(gridSize * gridSize);
 
   // Fill grid from elevation data
-  for (let row = 0; row < tileSize; ++row) {
-    for (let col = 0; col < tileSize; ++col) {
-      const src = row * tileSize + col;
+  for (let row = 0; row < gridSize; ++row) {
+    for (let col = 0; col < gridSize; ++col) {
+      const src = row * gridSize + col;
       const dst = row * gridSize + col;
       terrainGrid[dst] = Number(elevationData[src]);
     }
-  }
-
-  // Duplicate last row/col for Martini
-  for (let col = 0; col < gridSize - 1; ++col) {
-    terrainGrid[gridSize * (gridSize - 1) + col] =
-      terrainGrid[gridSize * (gridSize - 2) + col];
-  }
-  for (let row = 0; row < gridSize; ++row) {
-    terrainGrid[gridSize * row + gridSize - 1] =
-      terrainGrid[gridSize * row + gridSize - 2];
   }
 
   const martini = new Martini(gridSize);
