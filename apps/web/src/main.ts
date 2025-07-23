@@ -378,6 +378,12 @@ function animate() {
 
   controls.update();
 
+  // Hide all helpers by default
+  for (const helpers of tileHelpers.values()) {
+    helpers.boxHelper.visible = false;
+    helpers.centerPoint.visible = false;
+  }
+
   // // Update lighting to follow camera
   // directionalLight.position
   //   .copy(camera.position)
@@ -388,6 +394,16 @@ function animate() {
   tilesRenderer.setCamera(camera);
   tilesRenderer.setResolutionFromRenderer(camera, renderer);
   tilesRenderer.update();
+
+  // Show helpers for visible tiles
+  tilesRenderer.visibleTiles.forEach((tile) => {
+    const tileKey = tile.content.uri;
+    const helpers = tileHelpers.get(tileKey);
+    if (helpers) {
+      helpers.boxHelper.visible = true;
+      helpers.centerPoint.visible = true;
+    }
+  });
 
   renderer.render(scene, camera);
 }
