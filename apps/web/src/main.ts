@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { VertexNormalsHelper } from 'three/examples/jsm/helpers/VertexNormalsHelper.js';
 
@@ -25,7 +25,7 @@ const camera = new THREE.PerspectiveCamera(
   1,
   1e8,
 );
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new MapControls(camera, renderer.domElement);
 
 // Simple controls setup
 controls.enableDamping = true;
