@@ -131,6 +131,9 @@ export function mapCoordinates(
   const tileHeight = clampedBbox[3] - clampedBbox[1];
   const gridSize = tileSize + 1;
 
+  const geometryWidth = tileWidth * tileSize / gridSize;
+  const geometryHeight = tileHeight * tileSize / gridSize;
+
   let next = 0;
   let minElevation = Infinity;
   let maxElevation = -Infinity;
@@ -149,8 +152,8 @@ export function mapCoordinates(
 
     // NATURAL COORDINATE MAPPING:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates
-    const rasterX = clampedBbox[0] + (gx / tileSize) * (clampedBbox[2] - clampedBbox[0]); // Web Mercator X (easting)
-    const rasterY = clampedBbox[3] - (gy / tileSize) * (clampedBbox[3] - clampedBbox[1]); // Web Mercator Y (northing) - Y-FLIPPED
+    const rasterX = clampedBbox[0] + (gx / tileSize) * geometryWidth; // Web Mercator X (easting)
+    const rasterY = clampedBbox[3] - (gy / tileSize) * geometryHeight; // Web Mercator Y (northing) - Y-FLIPPED
 
     // Three.js coordinates (centered at origin)
     const threejsX = rasterX - tilesetCenter[0]; // X = easting (centered)
@@ -158,7 +161,7 @@ export function mapCoordinates(
     const threejsZ = -(rasterY - tilesetCenter[1]); // Z = southing (centered)
 
     pos.push(threejsX, threejsY, threejsZ);
-    uvs.push(gx / (tileSize + 1), gy / (tileSize + 1));
+    uvs.push(gx / tileSize, gy / tileSize);
 
     minElevation = Math.min(minElevation, elevation);
     maxElevation = Math.max(maxElevation, elevation);
