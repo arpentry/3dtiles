@@ -1,4 +1,4 @@
-import { Document, NodeIO } from '@gltf-transform/core';
+import { Document, NodeIO, TextureInfo } from '@gltf-transform/core';
 
 /**
  * Build glTF document from mesh geometry and optional texture
@@ -55,6 +55,11 @@ export async function buildGltfDocument(
       .setImage(texture)
       .setMimeType('image/png');
     material = material.setBaseColorTexture(gltfTexture);
+    const textureInfo = material.getBaseColorTextureInfo();
+    if (textureInfo) {
+      textureInfo.setWrapS(TextureInfo.WrapMode.CLAMP_TO_EDGE);
+      textureInfo.setWrapT(TextureInfo.WrapMode.CLAMP_TO_EDGE);
+    }
   }
 
   const primitive = doc
