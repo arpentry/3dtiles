@@ -2,14 +2,15 @@ import { EffectComposer, ToneMapping } from '@react-three/postprocessing';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { TilesRenderer } from '3d-tiles-renderer';
-import { Environment, OrbitControls } from '@react-three/drei';
+import { EnvironmentControls, TilesRenderer } from '3d-tiles-renderer';
+import { Environment } from '@react-three/drei';
 import { useControls } from 'leva';
 
 function Tiles3D({ url }: { url: string }) {
   const groupRef = useRef<THREE.Group>(null);
   const tilesRendererRef = useRef<TilesRenderer>(null);
-  const { camera, gl } = useThree();
+  const controlsRef = useRef<EnvironmentControls>(null);
+  const { camera, gl, scene } = useThree();
 
   useEffect(() => {
     const tiles = new TilesRenderer(url);
@@ -22,6 +23,13 @@ function Tiles3D({ url }: { url: string }) {
     if (groupRef.current) {
       groupRef.current.add(tiles.group as unknown as THREE.Group);
     }
+
+    const controls = new EnvironmentControls(scene, camera, gl.domElement);
+    controls.minDistance = 2;
+    controls.cameraRadius = 1;
+    controls.enableDamping = true;
+    controlsRef.current = controls;
+
     return () => {
       if (groupRef.current) {
         groupRef.current.remove(tiles.group as unknown as THREE.Group);
@@ -37,6 +45,9 @@ function Tiles3D({ url }: { url: string }) {
       tilesRendererRef.current.setResolutionFromRenderer(camera, gl);
       tilesRendererRef.current.update();
     }
+    if (controlsRef.current) {
+      controlsRef.current.update();
+    }
   });
 
   return <group ref={groupRef} />;
@@ -49,7 +60,6 @@ export default function SceneComponent() {
   const {
     toneMapping,
     toneMappingExposure,
-    autoRotate,
     adaptive,
     resolution,
     middleGrey,
@@ -72,8 +82,7 @@ export default function SceneComponent() {
       ],
     },
     toneMappingExposure: { value: 1, min: 0, max: 20, step: 0.1 },
-    autoRotate: !0,
-    adaptive: !0,
+    adaptive: true,
     resolution: { value: 256, options: [4, 8, 16, 64, 128, 256, 512, 1024] },
     middleGrey: { value: 0.6, min: 0, max: 1, step: 0.01 },
     maxLuminance: { value: 16, min: 0, max: 100, step: 1 },
@@ -95,9 +104,8 @@ export default function SceneComponent() {
 
   return (
     <>
-      <Environment background files="/hdri/venice_sunset_4k.hdr" />
+      <Environment files="/hdri/venice_sunset_4k.hdr" />
       <directionalLight ref={sunLightRef} position={[10, 10, 5]} />
-      <OrbitControls autoRotate={autoRotate} />
       <EffectComposer>
         <ToneMapping
           adaptive={adaptive}
