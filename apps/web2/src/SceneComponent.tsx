@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { EnvironmentControls, TilesRenderer } from '3d-tiles-renderer';
 import { Environment } from '@react-three/drei';
 import { useControls } from 'leva';
+import { DebugTilesPlugin } from '3d-tiles-renderer/plugins';
+// @ts-ignore
+import { TopoLinesPlugin } from './plugins/topolines/TopoLinesPlugin';
 
 function Tiles3D({ url }: { url: string }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -14,6 +17,8 @@ function Tiles3D({ url }: { url: string }) {
 
   useEffect(() => {
     const tiles = new TilesRenderer(url);
+    tiles.registerPlugin(new DebugTilesPlugin());
+    // tiles.registerPlugin(new TopoLinesPlugin());
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
     tiles.errorTarget = 50;
@@ -41,6 +46,16 @@ function Tiles3D({ url }: { url: string }) {
   // Update tilesRenderer every frame
   useFrame(() => {
     if (tilesRendererRef.current) {
+      const debugTilesPlugin = tilesRendererRef.current.getPluginByName(
+        'DEBUG_TILES_PLUGIN',
+      ) as DebugTilesPlugin;
+      debugTilesPlugin.displaySphereBounds = true;
+
+      //   const topoLinesPlugin = tilesRendererRef.current.getPluginByName(
+      //     'TOPO_LINES_PLUGIN',
+      //   ) as TopoLinesPlugin;
+      //   topoLinesPlugin.topoOpacity = 0.5;
+
       tilesRendererRef.current.setCamera(camera);
       tilesRendererRef.current.setResolutionFromRenderer(camera, gl);
       tilesRendererRef.current.update();
@@ -67,6 +82,8 @@ export default function SceneComponent() {
     averageLuminance,
     adaptationRate,
     sunIntensity,
+    fogColor,
+    fogDensity,
   } = useControls({
     toneMapping: {
       value: THREE.NoToneMapping,
@@ -89,6 +106,8 @@ export default function SceneComponent() {
     averageLuminance: { value: 1, min: 0, max: 100, step: 0.01 },
     adaptationRate: { value: 1, min: 0, max: 100, step: 0.01 },
     sunIntensity: { value: 8, min: 0, max: 10, step: 0.1 },
+    fogColor: '#d0dadb',
+    fogDensity: { value: 0.0000075, min: 0, max: 0.000025, step: 0.0000001 },
   });
 
   useEffect(() => {
@@ -97,10 +116,21 @@ export default function SceneComponent() {
   }, [toneMapping, toneMappingExposure]);
 
   useEffect(() => {
+    // Set fog for the entire scene
+    (state.scene as any).fog = new THREE.FogExp2(0xd0dadb, 0.0000075);
+  }, [state.scene]);
+
+  useEffect(() => {
     if (sunLightRef.current) {
       sunLightRef.current.intensity = sunIntensity;
     }
   }, [sunIntensity]);
+
+  useEffect(() => {
+    if (state.scene) {
+      (state.scene as any).fog = new THREE.FogExp2(fogColor, fogDensity);
+    }
+  }, [fogColor, fogDensity]);
 
   return (
     <>
