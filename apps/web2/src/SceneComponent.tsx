@@ -44,6 +44,7 @@ function Tiles3D({ url }: { url: string }) {
 
 export default function SceneComponent() {
   const state = useThree();
+  const sunLightRef = useRef<THREE.DirectionalLight>(null);
 
   const {
     toneMapping,
@@ -55,6 +56,7 @@ export default function SceneComponent() {
     maxLuminance,
     averageLuminance,
     adaptationRate,
+    sunIntensity,
   } = useControls({
     toneMapping: {
       value: THREE.NoToneMapping,
@@ -77,6 +79,7 @@ export default function SceneComponent() {
     maxLuminance: { value: 16, min: 0, max: 100, step: 1 },
     averageLuminance: { value: 1, min: 0, max: 100, step: 0.01 },
     adaptationRate: { value: 1, min: 0, max: 100, step: 0.01 },
+    sunIntensity: { value: 8, min: 0, max: 10, step: 0.1 },
   });
 
   useEffect(() => {
@@ -84,9 +87,16 @@ export default function SceneComponent() {
     state.gl.toneMappingExposure = toneMappingExposure;
   }, [toneMapping, toneMappingExposure]);
 
+  useEffect(() => {
+    if (sunLightRef.current) {
+      sunLightRef.current.intensity = sunIntensity;
+    }
+  }, [sunIntensity]);
+
   return (
     <>
       <Environment background files="/hdri/venice_sunset_4k.hdr" />
+      <directionalLight ref={sunLightRef} position={[10, 10, 5]} />
       <OrbitControls autoRotate={autoRotate} />
       <EffectComposer>
         <ToneMapping
@@ -98,10 +108,6 @@ export default function SceneComponent() {
           adaptationRate={adaptationRate}
         />
       </EffectComposer>
-      <mesh position={[0, 20000, 0]}>
-        <sphereGeometry args={[5000, 64, 64]} />
-        <meshStandardMaterial />
-      </mesh>
       <Tiles3D url={`${import.meta.env.VITE_TILES_URL}/tileset.json`} />
     </>
   );
