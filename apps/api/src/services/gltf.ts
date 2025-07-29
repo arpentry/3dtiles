@@ -48,7 +48,7 @@ export async function buildGltfDocument(
   let material = doc
     .createMaterial()
     .setBaseColorFactor([1, 1, 1, 1]) // White base color
-    .setRoughnessFactor(0.8) // Semi-glossy surface (good for terrain)
+    .setRoughnessFactor(0.95) // Semi-glossy surface (good for terrain)
     .setMetallicFactor(0.0) // Non-metallic (terrain is typically non-metallic)
     .setDoubleSided(false);
 
