@@ -124,7 +124,7 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
     );
 
     // 2. Read elevation data
-    const elevationData = await readElevationData(
+    const { data: elevationData, bbox: elevationBbox } = await readElevationData(
       elevURL,
       tileBounds,
       TILE_SIZE,
@@ -137,7 +137,7 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
     const meshGeometry = mapCoordinates(
       terrainMesh.vertices,
       terrainMesh.terrainGrid,
-      tileBounds,
+      elevationBbox,
       TILESET_CENTER,
       TILE_SIZE,
     );

@@ -21,12 +21,35 @@ export async function readElevationData(
   elevURL: string,
   tileBounds: TileBounds,
   tileSize: number,
-): Promise<TypedArray> {
+): Promise<{ data: TypedArray; bbox: number[] }> {
   const tiff = await fromUrl(elevURL);
+  const image = await tiff.getImage();
+  const globalBbox = image.getBoundingBox();
+
+  // Calculate the size of one pixel in Mercator coordinates
+  const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
+  const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
+
+  // Expand the bounding box by one pixel on the right and bottom edges
+  const expandedBbox = [
+    tileBounds.minX,
+    tileBounds.minY - pixelHeight, // Extend south
+    tileBounds.maxX + pixelWidth, // Extend east
+    tileBounds.maxY,
+  ];
+
+  // Clamp the expanded bounding box to the global bounding box of the TIFF
+  const clampedBbox = [
+    Math.max(expandedBbox[0], globalBbox[0]),
+    Math.max(expandedBbox[1], globalBbox[1]),
+    Math.min(expandedBbox[2], globalBbox[2]),
+    Math.min(expandedBbox[3], globalBbox[3]),
+  ];
+
   const raster = await tiff.readRasters({
-    bbox: [tileBounds.minX, tileBounds.minY, tileBounds.maxX, tileBounds.maxY],
-    width: tileSize,
-    height: tileSize,
+    bbox: clampedBbox,
+    width: tileSize + 1,
+    height: tileSize + 1,
     fillValue: ELEV_NO_DATA,
   });
 
@@ -34,7 +57,7 @@ export async function readElevationData(
     throw new Error('No elevation data available');
   }
 
-  return raster[0] as TypedArray;
+  return { data: raster[0] as TypedArray, bbox: clampedBbox };
 }
 
 /**
@@ -47,15 +70,33 @@ export async function generateTexture(
 ): Promise<Uint8Array | undefined> {
   try {
     const texTiff = await fromUrl(texURL);
+    const image = await texTiff.getImage();
+    const globalBbox = image.getBoundingBox();
+
+    // Calculate the size of one pixel in Mercator coordinates
+    const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
+    const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
+
+    // Expand the bounding box by one pixel on the right and bottom edges
+    const expandedBbox = [
+      tileBounds.minX,
+      tileBounds.minY - pixelHeight, // Extend south
+      tileBounds.maxX + pixelWidth, // Extend east
+      tileBounds.maxY,
+    ];
+
+    // Clamp the expanded bounding box to the global bounding box of the TIFF
+    const clampedBbox = [
+      Math.max(expandedBbox[0], globalBbox[0]),
+      Math.max(expandedBbox[1], globalBbox[1]),
+      Math.min(expandedBbox[2], globalBbox[2]),
+      Math.min(expandedBbox[3], globalBbox[3]),
+    ];
+
     const texRaster = await texTiff.readRasters({
-      bbox: [
-        tileBounds.minX,
-        tileBounds.minY,
-        tileBounds.maxX,
-        tileBounds.maxY,
-      ],
-      width: tileSize,
-      height: tileSize,
+      bbox: clampedBbox,
+      width: tileSize + 1,
+      height: tileSize + 1,
       resampleMethod: 'bilinear',
     });
 
@@ -63,10 +104,11 @@ export async function generateTexture(
       return undefined;
     }
 
-    const img = new Uint8Array(tileSize * tileSize * 4);
+    const img = new Uint8Array((tileSize + 1) * (tileSize + 1) * 4);
     const bands = texRaster.length;
+    const outputSize = tileSize + 1;
 
-    for (let i = 0; i < tileSize * tileSize; ++i) {
+    for (let i = 0; i < outputSize * outputSize; ++i) {
       const bi = i * 4;
       if (bands >= 3) {
         img[bi] = Number((texRaster[0] as TypedArray)[i]);
@@ -80,7 +122,7 @@ export async function generateTexture(
       }
     }
 
-    return encode(img, tileSize, tileSize);
+    return encode(img, outputSize, outputSize);
   } catch {
     return undefined;
   }

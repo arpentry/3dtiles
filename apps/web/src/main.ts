@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { VertexNormalsHelper } from 'three/examples/jsm/helpers/VertexNormalsHelper.js';
 
@@ -25,7 +25,7 @@ const camera = new THREE.PerspectiveCamera(
   1,
   1e8,
 );
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new MapControls(camera, renderer.domElement);
 
 // Simple controls setup
 controls.enableDamping = true;
@@ -66,6 +66,7 @@ let groundGrid: THREE.GridHelper | null = null;
 
 // Store all VertexNormalsHelpers for toggling
 const vertexNormalsHelpers: VertexNormalsHelper[] = [];
+const tileHelpers = new Map();
 
 // -----------------------------------------------------------------------------
 // Debug helpers
@@ -279,6 +280,9 @@ tilesRenderer.addEventListener('load-model', (event) => {
   tilesLoadedCount++;
   const { scene: model, tile } = event as any;
 
+  // Unique key for the tile using its URI
+  const tileKey = tile.content.uri;
+
   // Debug: Log material and normals
   model.traverse((obj: any) => {
     if (obj.isMesh) {
@@ -296,7 +300,7 @@ tilesRenderer.addEventListener('load-model', (event) => {
   });
 
   console.log(
-    `🏔️ TILE ${tilesLoadedCount} LOADED: ${tile.content?.uri || 'Unknown'}`,
+    `🏔️ TILE ${tilesLoadedCount} LOADED: ${tileKey}`,
   );
 
   if (model) {
@@ -326,25 +330,38 @@ tilesRenderer.addEventListener('load-model', (event) => {
     console.log(`   🔺 ${meshCount} meshes, ${vertexCount} vertices`);
 
     // Add clear bounding box visualization
-    const boxHelper = new THREE.BoxHelper(model, 0x00ff00);
-    boxHelper.name = `tile-box-${tilesLoadedCount}`;
+    const colors = [0x00ff00, 0xffa500, 0xff00ff, 0x00ffff, 0xffff00]; // Green, Orange, Magenta, Cyan, Yellow
+    let level = 0;
+    const uri = tile.content?.uri;
+    if (uri) {
+      const parts = uri.split('/');
+      if (parts.length > 2 && parts[1] === 'tiles') {
+        level = parseInt(parts[2], 10);
+      }
+    }
+    const color = colors[level % colors.length];
+    const boxHelper = new THREE.BoxHelper(model, color);
+    boxHelper.name = `tile-box-${tileKey}`;
     scene.add(boxHelper);
-    console.log(`   📦 Bounding box added (green)`);
+    console.log(`   📦 Bounding box added (color: #${color.toString(16)})`);
 
     // Add a point at the tile center for reference
     const centerGeometry = new THREE.SphereGeometry(50, 8, 6);
     const centerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const centerPoint = new THREE.Mesh(centerGeometry, centerMaterial);
     centerPoint.position.copy(modelCenter);
-    centerPoint.name = `tile-center-${tilesLoadedCount}`;
+    centerPoint.name = `tile-center-${tileKey}`;
     scene.add(centerPoint);
     console.log(`   🎯 Center point added (red sphere)`);
 
+    // Store helpers for later removal
+    tileHelpers.set(tileKey, { boxHelper, centerPoint });
+
     // Store reference to model for visibility checking
-    model.name = `tile-${tilesLoadedCount}`;
+    model.name = `tile-model-${tileKey}`;
 
     // Check if this tile is visible
-    checkTileVisibility(model, `TILE ${tilesLoadedCount}`);
+    checkTileVisibility(model, `TILE ${tileKey}`);
   }
 });
 
@@ -361,6 +378,12 @@ function animate() {
 
   controls.update();
 
+  // Hide all helpers by default
+  for (const helpers of tileHelpers.values()) {
+    helpers.boxHelper.visible = false;
+    helpers.centerPoint.visible = false;
+  }
+
   // // Update lighting to follow camera
   // directionalLight.position
   //   .copy(camera.position)
@@ -371,6 +394,16 @@ function animate() {
   tilesRenderer.setCamera(camera);
   tilesRenderer.setResolutionFromRenderer(camera, renderer);
   tilesRenderer.update();
+
+  // Show helpers for visible tiles
+  tilesRenderer.visibleTiles.forEach((tile) => {
+    const tileKey = tile.content.uri;
+    const helpers = tileHelpers.get(tileKey);
+    if (helpers) {
+      helpers.boxHelper.visible = true;
+      helpers.centerPoint.visible = true;
+    }
+  });
 
   renderer.render(scene, camera);
 }
@@ -443,12 +476,12 @@ window.addEventListener('keydown', (event) => {
       console.log('👁️ VISIBILITY CHECK:');
       scene.children.forEach((child) => {
         if (child.name.startsWith('tile-center-')) {
-          const tileNumber = child.name.replace('tile-center-', '');
+          const tileKey = child.name.replace('tile-center-', '');
           const tileModel = scene.children.find(
-            (c) => c.name === `tile-${tileNumber}`,
+            (c) => c.name === `tile-model-${tileKey}`,
           );
           if (tileModel) {
-            checkTileVisibility(tileModel, `TILE ${tileNumber}`);
+            checkTileVisibility(tileModel, `TILE ${tileKey}`);
           }
         }
       });
