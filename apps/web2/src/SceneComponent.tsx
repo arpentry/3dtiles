@@ -118,20 +118,20 @@ export default function SceneComponent() {
     sunIntensity: { value: 20, min: 0, max: 100, step: 0.1 },
     fogColor: '#d0dadb',
     fogDensity: { value: 0.0000075, min: 0, max: 0.000025, step: 0.0000001 },
-    turbidity: { value: 10, min: 0.0, max: 20.0, step: 0.1 },
+    turbidity: { value: 7.8, min: 0.0, max: 20.0, step: 0.1 },
     rayleigh: { value: 3, min: 0.0, max: 4, step: 0.001 },
     mieCoefficient: { value: 0.005, min: 0.0, max: 0.1, step: 0.001 },
-    mieDirectionalG: { value: 0.7, min: 0.0, max: 1, step: 0.001 },
+    mieDirectionalG: { value: 0.5, min: 0.0, max: 1, step: 0.001 },
     azimuth: { value: -180, min: -180, max: 180, step: 0.1 },
-    elevation: { value: 30, min: 0, max: 90, step: 0.1 },
-    distance: { value: 3000000, min: 0, max: 10000000, step: 10000 },
+    elevation: { value: 16, min: 0, max: 90, step: 0.1 },
+    distance: { value: 800000, min: 0, max: 10000000, step: 10000 },
     toneMappingExposure: {
-      value: 0.75,
+      value: 0.55,
       min: 0,
       max: 1,
       step: 0.0001,
     },
-    ambientIntensity: { value: 0.3, min: 0, max: 10, step: 0.01 },
+    ambientIntensity: { value: 5.6, min: 0, max: 10, step: 0.01 },
   });
 
   useEffect(() => {
