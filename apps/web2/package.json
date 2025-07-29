@@ -22,6 +22,7 @@
     "@react-three/postprocessing": "^3.0.4",
     "@types/three": "^0.178.1",
     "cesium": "^1.126.0",
+    "leva": "^0.10.0",
     "postprocessing": "^6.37.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
