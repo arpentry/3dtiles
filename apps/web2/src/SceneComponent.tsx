@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { EnvironmentControls, TilesRenderer } from '3d-tiles-renderer';
-import { Environment, Sky } from '@react-three/drei';
+import { Cloud, Clouds, Sky } from '@react-three/drei';
 import { useControls } from 'leva';
 import { DebugTilesPlugin } from '3d-tiles-renderer/plugins';
 // @ts-ignore
@@ -67,6 +67,34 @@ function Tiles3D({ url }: { url: string }) {
   });
 
   return <group ref={groupRef} />;
+}
+
+function CloudsComponent() {
+  const ref = useRef<THREE.Group>(null);
+
+  const { color, x, y, z, ...config } = useControls({
+    seed: { value: 1, min: 1, max: 100, step: 1 },
+    segments: { value: 60, min: 1, max: 80, step: 1 },
+    volume: { value: 4800, min: 0, max: 10000, step: 100 },
+    opacity: { value: 0.6, min: 0, max: 1, step: 0.01 },
+    fade: { value: 10, min: 0, max: 400, step: 1 },
+    growth: { value: 4, min: 0, max: 20, step: 1 },
+    speed: { value: 0.1, min: 0, max: 1, step: 0.01 },
+    x: { value: 5000, min: 0, max: 10000, step: 100 },
+    y: { value: 700, min: 0, max: 10000, step: 100 },
+    z: { value: 2000, min: 0, max: 10000, step: 100 },
+    color: 'white',
+  });
+
+  return (
+    <>
+      <group ref={ref} position={[0, 5000, 0]}>
+        <Clouds limit={400} range={1000}>
+          <Cloud {...config} bounds={[x, y, z]} color={color} />
+        </Clouds>
+      </group>
+    </>
+  );
 }
 
 export default function SceneComponent() {
@@ -201,6 +229,7 @@ export default function SceneComponent() {
         />
       </EffectComposer>
       <Tiles3D url={`${import.meta.env.VITE_TILES_URL}/tileset.json`} />
+      <CloudsComponent />
     </>
   );
 }
