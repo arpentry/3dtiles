@@ -15,15 +15,47 @@ function Tiles3D({ url }: { url: string }) {
   const controlsRef = useRef<EnvironmentControls>(null);
   const { camera, gl, scene } = useThree();
 
+  // 3D Tiles Settings
+  const { errorTarget, maxDepth, displayActiveTiles } = useControls(
+    '3D Tiles - Settings',
+    {
+      errorTarget: { value: 50, min: 1, max: 200, step: 1 },
+      maxDepth: { value: 10, min: 1, max: 20, step: 1 },
+      displayActiveTiles: true,
+    }
+  );
+
+  // Debug Visualization
+  const { displayBoxBounds, enableTopoLines, topoOpacity } = useControls(
+    '3D Tiles - Debug',
+    {
+      displayBoxBounds: true,
+      enableTopoLines: false,
+      topoOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
+    }
+  );
+
+  // Camera Controls
+  const { minDistance, cameraRadius, enableDamping } = useControls(
+    '3D Tiles - Camera',
+    {
+      minDistance: { value: 2, min: 0.1, max: 100, step: 0.1 },
+      cameraRadius: { value: 1, min: 0.1, max: 10, step: 0.1 },
+      enableDamping: true,
+    }
+  );
+
   useEffect(() => {
     const tiles = new TilesRenderer(url);
     tiles.registerPlugin(new DebugTilesPlugin());
-    // tiles.registerPlugin(new TopoLinesPlugin());
+    if (enableTopoLines) {
+      tiles.registerPlugin(new TopoLinesPlugin());
+    }
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
-    tiles.errorTarget = 50;
-    tiles.maxDepth = 10;
-    tiles.displayActiveTiles = true;
+    tiles.errorTarget = errorTarget;
+    tiles.maxDepth = maxDepth;
+    tiles.displayActiveTiles = displayActiveTiles;
     tilesRendererRef.current = tiles;
 
     if (groupRef.current) {
@@ -31,9 +63,9 @@ function Tiles3D({ url }: { url: string }) {
     }
 
     const controls = new EnvironmentControls(scene, camera, gl.domElement);
-    controls.minDistance = 2;
-    controls.cameraRadius = 1;
-    controls.enableDamping = true;
+    controls.minDistance = minDistance;
+    controls.cameraRadius = cameraRadius;
+    controls.enableDamping = enableDamping;
     controlsRef.current = controls;
 
     return () => {
@@ -42,7 +74,7 @@ function Tiles3D({ url }: { url: string }) {
       }
       tiles.dispose();
     };
-  }, [url, camera, gl]);
+  }, [url, camera, gl, errorTarget, maxDepth, displayActiveTiles, enableTopoLines, minDistance, cameraRadius, enableDamping]);
 
   // Update tilesRenderer every frame
   useFrame(() => {
@@ -50,12 +82,16 @@ function Tiles3D({ url }: { url: string }) {
       const debugTilesPlugin = tilesRendererRef.current.getPluginByName(
         'DEBUG_TILES_PLUGIN',
       ) as DebugTilesPlugin;
-      debugTilesPlugin.displayBoxBounds = true;
+      debugTilesPlugin.displayBoxBounds = displayBoxBounds;
 
-      //   const topoLinesPlugin = tilesRendererRef.current.getPluginByName(
-      //     'TOPO_LINES_PLUGIN',
-      //   ) as TopoLinesPlugin;
-      //   topoLinesPlugin.topoOpacity = 0.5;
+      if (enableTopoLines) {
+        const topoLinesPlugin = tilesRendererRef.current.getPluginByName(
+          'TOPO_LINES_PLUGIN',
+        ) as TopoLinesPlugin;
+        if (topoLinesPlugin) {
+          topoLinesPlugin.topoOpacity = topoOpacity;
+        }
+      }
 
       tilesRendererRef.current.setCamera(camera);
       tilesRendererRef.current.setResolutionFromRenderer(camera, gl);
@@ -72,19 +108,27 @@ function Tiles3D({ url }: { url: string }) {
 function CloudsComponent() {
   const ref = useRef<THREE.Group>(null);
 
-  const { color, x, y, z, ...config } = useControls({
-    seed: { value: 1, min: 1, max: 100, step: 1 },
-    segments: { value: 60, min: 1, max: 80, step: 1 },
-    volume: { value: 4800, min: 0, max: 10000, step: 100 },
-    opacity: { value: 0.6, min: 0, max: 1, step: 0.01 },
-    fade: { value: 10, min: 0, max: 400, step: 1 },
-    growth: { value: 4, min: 0, max: 20, step: 1 },
-    speed: { value: 0.1, min: 0, max: 1, step: 0.01 },
+  // Cloud Properties
+  const { seed, segments, volume, opacity, fade, growth, speed, color } =
+    useControls('Clouds - Properties', {
+      seed: { value: 1, min: 1, max: 100, step: 1 },
+      segments: { value: 60, min: 1, max: 80, step: 1 },
+      volume: { value: 4800, min: 0, max: 10000, step: 100 },
+      opacity: { value: 0.6, min: 0, max: 1, step: 0.01 },
+      fade: { value: 10, min: 0, max: 400, step: 1 },
+      growth: { value: 4, min: 0, max: 20, step: 1 },
+      speed: { value: 0.1, min: 0, max: 1, step: 0.01 },
+      color: 'white',
+    });
+
+  // Cloud Bounds
+  const { x, y, z } = useControls('Clouds - Bounds', {
     x: { value: 5000, min: 0, max: 10000, step: 100 },
     y: { value: 700, min: 0, max: 10000, step: 100 },
     z: { value: 2000, min: 0, max: 10000, step: 100 },
-    color: 'white',
   });
+
+  const config = { seed, segments, volume, opacity, fade, growth, speed };
 
   return (
     <>
@@ -103,63 +147,74 @@ export default function SceneComponent() {
   // @ts-ignore
   const skyRef = useRef<Sky>(null);
 
+  // Tone Mapping Controls
+  const { toneMapping, toneMappingExposure } = useControls(
+    'Scene - Tone Mapping',
+    {
+      toneMapping: {
+        value: THREE.ACESFilmicToneMapping,
+        options: [
+          THREE.NoToneMapping,
+          THREE.LinearToneMapping,
+          THREE.ReinhardToneMapping,
+          THREE.CineonToneMapping,
+          THREE.ACESFilmicToneMapping,
+          THREE.AgXToneMapping,
+          THREE.NeutralToneMapping,
+          THREE.CustomToneMapping,
+        ],
+      },
+      toneMappingExposure: {
+        value: 0.55,
+        min: 0,
+        max: 1,
+        step: 0.0001,
+      },
+    }
+  );
+
+  // Post Processing Controls
   const {
-    toneMapping,
     adaptive,
     resolution,
     middleGrey,
     maxLuminance,
     averageLuminance,
     adaptationRate,
-    sunIntensity,
-    fogColor,
-    fogDensity,
-    turbidity,
-    rayleigh,
-    mieCoefficient,
-    mieDirectionalG,
-    azimuth,
-    elevation,
-    distance,
-    toneMappingExposure,
-    ambientIntensity,
-  } = useControls({
-    toneMapping: {
-      value: THREE.ACESFilmicToneMapping,
-      options: [
-        THREE.NoToneMapping,
-        THREE.LinearToneMapping,
-        THREE.ReinhardToneMapping,
-        THREE.CineonToneMapping,
-        THREE.ACESFilmicToneMapping,
-        THREE.AgXToneMapping,
-        THREE.NeutralToneMapping,
-        THREE.CustomToneMapping,
-      ],
-    },
+  } = useControls('Scene - Post Processing', {
     adaptive: true,
     resolution: { value: 256, options: [4, 8, 16, 64, 128, 256, 512, 1024] },
     middleGrey: { value: 0.6, min: 0, max: 1, step: 0.01 },
     maxLuminance: { value: 16, min: 0, max: 100, step: 1 },
     averageLuminance: { value: 1, min: 0, max: 100, step: 0.01 },
     adaptationRate: { value: 1, min: 0, max: 100, step: 0.01 },
-    sunIntensity: { value: 20, min: 0, max: 100, step: 0.1 },
+  });
+
+  // Sky & Atmosphere Controls
+  const { turbidity, rayleigh, mieCoefficient, mieDirectionalG } = useControls(
+    'Scene - Sky & Atmosphere',
+    {
+      turbidity: { value: 7.8, min: 0.0, max: 20.0, step: 0.1 },
+      rayleigh: { value: 3, min: 0.0, max: 4, step: 0.001 },
+      mieCoefficient: { value: 0.005, min: 0.0, max: 0.1, step: 0.001 },
+      mieDirectionalG: { value: 0.5, min: 0.0, max: 1, step: 0.001 },
+    }
+  );
+
+  // Sun & Lighting Controls
+  const { azimuth, elevation, distance, sunIntensity, ambientIntensity } =
+    useControls('Scene - Sun & Lighting', {
+      azimuth: { value: -180, min: -180, max: 180, step: 0.1 },
+      elevation: { value: 16, min: 0, max: 90, step: 0.1 },
+      distance: { value: 800000, min: 0, max: 10000000, step: 10000 },
+      sunIntensity: { value: 20, min: 0, max: 100, step: 0.1 },
+      ambientIntensity: { value: 5.6, min: 0, max: 10, step: 0.01 },
+    });
+
+  // Environment Controls
+  const { fogColor, fogDensity } = useControls('Scene - Environment', {
     fogColor: '#d0dadb',
     fogDensity: { value: 0.0000075, min: 0, max: 0.000025, step: 0.0000001 },
-    turbidity: { value: 7.8, min: 0.0, max: 20.0, step: 0.1 },
-    rayleigh: { value: 3, min: 0.0, max: 4, step: 0.001 },
-    mieCoefficient: { value: 0.005, min: 0.0, max: 0.1, step: 0.001 },
-    mieDirectionalG: { value: 0.5, min: 0.0, max: 1, step: 0.001 },
-    azimuth: { value: -180, min: -180, max: 180, step: 0.1 },
-    elevation: { value: 16, min: 0, max: 90, step: 0.1 },
-    distance: { value: 800000, min: 0, max: 10000000, step: 10000 },
-    toneMappingExposure: {
-      value: 0.55,
-      min: 0,
-      max: 1,
-      step: 0.0001,
-    },
-    ambientIntensity: { value: 5.6, min: 0, max: 10, step: 0.01 },
   });
 
   useEffect(() => {
