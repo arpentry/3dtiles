@@ -13,7 +13,7 @@ function Tiles3D({ url }: { url: string }) {
   const groupRef = useRef<THREE.Group>(null);
   const tilesRendererRef = useRef<TilesRenderer>(null);
   const controlsRef = useRef<EnvironmentControls>(null);
-  const { camera, gl, scene } = useThree();
+  const { camera, gl } = useThree();
 
   // 3D Tiles Settings
   const { errorTarget, maxDepth, displayActiveTiles } = useControls(
@@ -62,7 +62,8 @@ function Tiles3D({ url }: { url: string }) {
       groupRef.current.add(tiles.group as unknown as THREE.Group);
     }
 
-    const controls = new EnvironmentControls(scene, camera, gl.domElement);
+    // Pass the tilesRenderer directly to EnvironmentControls to isolate it from other scene elements
+    const controls = new EnvironmentControls(undefined, camera, gl.domElement, tiles);
     controls.minDistance = minDistance;
     controls.cameraRadius = cameraRadius;
     controls.enableDamping = enableDamping;
