@@ -1,4 +1,4 @@
-import { EffectComposer, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, ToneMapping, TiltShift2 } from '@react-three/postprocessing';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
@@ -190,6 +190,27 @@ export default function SceneComponent() {
     adaptationRate: { value: 1, min: 0, max: 100, step: 0.01 },
   });
 
+  // Tilt Shift Controls
+  const {
+    tiltShiftEnabled,
+    blur,
+    taper,
+    startX,
+    startY,
+    endX,
+    endY,
+    samples,
+  } = useControls('Scene - Tilt Shift', {
+    tiltShiftEnabled: false,
+    blur: { value: 0.5, min: 0, max: 2, step: 0.01 },
+    taper: { value: 1.5, min: 0, max: 2, step: 0.01 },
+    startX: { value: 0.0, min: 0, max: 1, step: 0.01 },
+    startY: { value: 0.3, min: 0, max: 1, step: 0.01 },
+    endX: { value: 1.0, min: 0, max: 1, step: 0.01 },
+    endY: { value: 0.7, min: 0, max: 1, step: 0.01 },
+    samples: { value: 5, min: 1, max: 20, step: 1 },
+  });
+
   // Sky & Atmosphere Controls
   const { turbidity, rayleigh, mieCoefficient, mieDirectionalG } = useControls(
     'Scene - Sky & Atmosphere',
@@ -281,6 +302,13 @@ export default function SceneComponent() {
           maxLuminance={maxLuminance}
           averageLuminance={averageLuminance}
           adaptationRate={adaptationRate}
+        />
+        <TiltShift2
+          blur={tiltShiftEnabled ? blur : 0}
+          taper={tiltShiftEnabled ? taper : 0}
+          start={[startX, startY]}
+          end={[endX, endY]}
+          samples={samples}
         />
       </EffectComposer>
       <Tiles3D url={`${import.meta.env.VITE_TILES_URL}/tileset.json`} />
