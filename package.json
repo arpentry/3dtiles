@@ -20,7 +20,7 @@
     "deploy:api": "pnpm --filter 3dtiles-api run deploy",
     "build:web": "pnpm --filter 3dtiles-web run build",
     "deploy:web": "pnpm build:web && pnpm --filter 3dtiles-web run deploy",
-    "deploy:all": "pnpm --parallel deploy"
+    "deploy:all": "pnpm --parallel run deploy"
   },
   "keywords": [],
   "author": "",
