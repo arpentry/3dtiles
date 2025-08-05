@@ -1,0 +1,7 @@
+{
+  "name": "3dtiles-web",
+  "compatibility_date": "2025-02-12",
+  "assets": {
+    "directory": "public"
+  }
+}
