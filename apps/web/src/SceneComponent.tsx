@@ -126,6 +126,7 @@ export default function SceneComponent() {
       <Tiles3D
         url={`https://3dtiles-api.gaetan-zwick-dev.workers.dev/tileset.json`}
       />
+
       <CloudsComponent />
     </>
   );
