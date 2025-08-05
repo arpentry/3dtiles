@@ -1,4 +1,3 @@
 name = "3dtiles-web"
 compatibility_date = "2025-02-12"
 pages_build_output_dir = "dist"
-assets = { directory = "public" }
