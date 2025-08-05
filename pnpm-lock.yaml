@@ -82,46 +82,6 @@ importers:
   apps/web:
     dependencies:
       3d-tiles-renderer:
-        specifier: ^0.4.10
-        version: 0.4.10(@react-three/fiber@8.18.0(@types/react@19.1.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0)
-      cesium:
-        specifier: ^1.126.0
-        version: 1.129.0
-      three:
-        specifier: ^0.177.0
-        version: 0.177.0
-    devDependencies:
-      '@types/jsdom':
-        specifier: ^21.1.7
-        version: 21.1.7
-      '@types/node':
-        specifier: ^22.13.11
-        version: 22.15.16
-      '@types/three':
-        specifier: ^0.173.0
-        version: 0.173.0
-      jsdom:
-        specifier: ^26.1.0
-        version: 26.1.0
-      prettier:
-        specifier: ^3.5.0
-        version: 3.5.3
-      typescript:
-        specifier: ~5.7.2
-        version: 5.7.3
-      vite:
-        specifier: ^6.1.0
-        version: 6.3.5(@types/node@22.15.16)
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.15.16)(@vitest/ui@3.2.4)(jsdom@26.1.0)
-      wrangler:
-        specifier: '4'
-        version: 4.14.4(@cloudflare/workers-types@4.20250508.0)
-
-  apps/web2:
-    dependencies:
-      3d-tiles-renderer:
         specifier: ^0.4.12
         version: 0.4.12(@react-three/fiber@9.2.0(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.178.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.178.0)
       '@react-three/drei':
@@ -208,21 +168,6 @@ importers:
         version: 4.14.4(@cloudflare/workers-types@4.20250508.0)
 
 packages:
-
-  3d-tiles-renderer@0.4.10:
-    resolution: {integrity: sha512-gUXHg+Fzbcr9uSk7UZhN2/8smueAkIG2keiD3queaYuCxYgsh/97zX5FpduFy7dfdCdSIJDgUKHLHLCfrLQV3g==}
-    peerDependencies:
-      '@react-three/fiber': ^8.17.9
-      react: ^18.3.1
-      react-dom: ^18.3.1
-      three: '>=0.166.0'
-    peerDependenciesMeta:
-      '@react-three/fiber':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   3d-tiles-renderer@0.4.12:
     resolution: {integrity: sha512-hb2F++q+hKcyskO7pg7B9XcfTjFU+SWUNC87+c+0hjxg+h0rO4zgLbcjRP8UHQCojgZZM9WXYDVpgSRuUpF5vg==}
@@ -1135,31 +1080,6 @@ packages:
       react-dom:
         optional: true
 
-  '@react-three/fiber@8.18.0':
-    resolution: {integrity: sha512-FYZZqD0UUHUswKz3LQl2Z7H24AhD14XGTsIRw3SJaXUxyfVMi+1yiZGmqTcPt/CkPpdU7rrxqcyQ1zJE5DjvIQ==}
-    peerDependencies:
-      expo: '>=43.0'
-      expo-asset: '>=8.4'
-      expo-file-system: '>=11.0'
-      expo-gl: '>=11.0'
-      react: '>=18 <19'
-      react-dom: '>=18 <19'
-      react-native: '>=0.64'
-      three: '>=0.133'
-    peerDependenciesMeta:
-      expo:
-        optional: true
-      expo-asset:
-        optional: true
-      expo-file-system:
-        optional: true
-      expo-gl:
-        optional: true
-      react-dom:
-        optional: true
-      react-native:
-        optional: true
-
   '@react-three/fiber@9.2.0':
     resolution: {integrity: sha512-esZe+E9T/aYEM4HlBkirr/yRE8qWTp9WUsLISyHHMCHKlJv85uc5N4wwKw+Ay0QeTSITw6T9Q3Svpu383Q+CSQ==}
     peerDependencies:
@@ -1565,9 +1485,6 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.0
 
-  '@types/react-reconciler@0.26.7':
-    resolution: {integrity: sha512-mBDYl8x+oyPX/VBb3E638N0B7xG+SPk/EAMcVPeexqus/5aTpTphQi0curhhshOqRrc9t6OPoJfEUkbymse/lQ==}
-
   '@types/react-reconciler@0.28.9':
     resolution: {integrity: sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==}
     peerDependencies:
@@ -1578,9 +1495,6 @@ packages:
 
   '@types/stats.js@0.17.4':
     resolution: {integrity: sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==}
-
-  '@types/three@0.173.0':
-    resolution: {integrity: sha512-KtNjfI/CRB6JVKIVeZM1R3GYDX2wkoV2itNcQu2j4d7qkhjGOuB+s2oF6jl9mztycDLGMtrAnJQYxInC8Bb20A==}
 
   '@types/three@0.178.1':
     resolution: {integrity: sha512-WSabew1mgWgRx2RfLfKY+9h4wyg6U94JfLbZEGU245j/WY2kXqU0MUfghS+3AYMV5ET1VlILAgpy77cB6a3Itw==}
@@ -2463,11 +2377,6 @@ packages:
     resolution: {integrity: sha512-WhB9zCku7EGTj/HQQRz5aUQEUeoQZH2bWcltRErOpymJ4boYE6wL9Tbr23krRPSZ+C5zqNSrSw+Cc7sZZ4b7vg==}
     engines: {node: '>=0.10.0'}
 
-  its-fine@1.2.5:
-    resolution: {integrity: sha512-fXtDA0X0t0eBYAGLVM5YsgJGsJ5jEmqZEPrGbzdf5awjv0xE7nqv3TVnvtUF060Tkes15DbDAKW/I48vsb6SyA==}
-    peerDependencies:
-      react: '>=18.0'
-
   its-fine@2.0.0:
     resolution: {integrity: sha512-KLViCmWx94zOvpLwSlsx6yOCeMhZYaxrJV87Po5k/FoZzcPSahvK5qJ7fYhS61sZi5ikmh2S3Hz55A2l3U69ng==}
     peerDependencies:
@@ -2871,11 +2780,6 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
-  react-dom@18.3.1:
-    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
-    peerDependencies:
-      react: ^18.3.1
-
   react-dom@19.1.0:
     resolution: {integrity: sha512-Xs1hdnE+DyKgeHJeJznQmYMIBG3TKIHJJT95Q58nHLSrElKlGQqDTR2HQ9fx5CN/Gk6Vh/kupBTDLU11/nDk/g==}
     peerDependencies:
@@ -2889,12 +2793,6 @@ packages:
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
-
-  react-reconciler@0.27.0:
-    resolution: {integrity: sha512-HmMDKciQjYmBRGuuhIaKA1ba/7a+UsM5FzOZsMO2JYHt9Jh8reCb7j1eDC95NOyUlKM9KRyvdx0flBuDvYSBoA==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: ^18.0.0
 
   react-reconciler@0.31.0:
     resolution: {integrity: sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ==}
@@ -2914,10 +2812,6 @@ packages:
     peerDependenciesMeta:
       react-dom:
         optional: true
-
-  react@18.3.1:
-    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
-    engines: {node: '>=0.10.0'}
 
   react@19.1.0:
     resolution: {integrity: sha512-FS+XFBNvn3GTAWq26joslQgWNoFu08F4kl0J4CgdNKADkdSGXQyTCnKteIAJy96Br6YbpEU1LSzV5dYtjMkMDg==}
@@ -2959,12 +2853,6 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
-
-  scheduler@0.21.0:
-    resolution: {integrity: sha512-1r87x5fz9MXqswA2ERLo0EbOAU74DpIUO090gIasYTqlVoJeMcl+Z1Rg7WHz+qtPujhS/hGIt9kxZOYBV3faRQ==}
-
-  scheduler@0.23.2:
-    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
   scheduler@0.25.0:
     resolution: {integrity: sha512-xFVuu11jh+xcO7JOAGJNOXld8/TcEHK/4CituBUeUb5hqxJLj9YuemAEuvm9gQ/+pgXYfbQuqAkiYu+u7YEsNA==}
@@ -3104,9 +2992,6 @@ packages:
     peerDependencies:
       three: '>=0.128.0'
 
-  three@0.177.0:
-    resolution: {integrity: sha512-EiXv5/qWAaGI+Vz2A+JfavwYCMdGjxVsrn3oBwllUoqYeaBO75J63ZfyaQKoiLrqNHoTlUc6PFgMXnS0kI45zg==}
-
   three@0.178.0:
     resolution: {integrity: sha512-ybFIB0+x8mz0wnZgSGy2MO/WCO6xZhQSZnmfytSPyNpM0sBafGRVhdaj+erYh5U+RhQOAg/eXqw5uVDiM2BjhQ==}
 
@@ -3206,11 +3091,6 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
       typescript: '>=4.8.4 <5.9.0'
-
-  typescript@5.7.3:
-    resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
-    engines: {node: '>=14.17'}
-    hasBin: true
 
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
@@ -3544,14 +3424,6 @@ packages:
         optional: true
 
 snapshots:
-
-  3d-tiles-renderer@0.4.10(@react-three/fiber@8.18.0(@types/react@19.1.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0):
-    dependencies:
-      three: 0.177.0
-    optionalDependencies:
-      '@react-three/fiber': 8.18.0(@types/react@19.1.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   3d-tiles-renderer@0.4.12(@react-three/fiber@9.2.0(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.178.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.178.0):
     dependencies:
@@ -4792,27 +4664,6 @@ snapshots:
       - '@types/three'
       - immer
 
-  '@react-three/fiber@8.18.0(@types/react@19.1.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.177.0)':
-    dependencies:
-      '@babel/runtime': 7.27.6
-      '@types/react-reconciler': 0.26.7
-      '@types/webxr': 0.5.22
-      base64-js: 1.5.1
-      buffer: 6.0.3
-      its-fine: 1.2.5(@types/react@19.1.8)(react@18.3.1)
-      react: 18.3.1
-      react-reconciler: 0.27.0(react@18.3.1)
-      react-use-measure: 2.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      scheduler: 0.21.0
-      suspend-react: 0.1.3(react@18.3.1)
-      three: 0.177.0
-      zustand: 3.7.2(react@18.3.1)
-    optionalDependencies:
-      react-dom: 18.3.1(react@18.3.1)
-    transitivePeerDependencies:
-      - '@types/react'
-    optional: true
-
   '@react-three/fiber@9.2.0(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.178.0)':
     dependencies:
       '@babel/runtime': 7.27.6
@@ -5302,11 +5153,6 @@ snapshots:
     dependencies:
       '@types/react': 19.1.8
 
-  '@types/react-reconciler@0.26.7':
-    dependencies:
-      '@types/react': 19.1.8
-    optional: true
-
   '@types/react-reconciler@0.28.9(@types/react@19.1.8)':
     dependencies:
       '@types/react': 19.1.8
@@ -5316,15 +5162,6 @@ snapshots:
       csstype: 3.1.3
 
   '@types/stats.js@0.17.4': {}
-
-  '@types/three@0.173.0':
-    dependencies:
-      '@tweenjs/tween.js': 23.1.3
-      '@types/stats.js': 0.17.4
-      '@types/webxr': 0.5.22
-      '@webgpu/types': 0.1.60
-      fflate: 0.8.2
-      meshoptimizer: 0.18.1
 
   '@types/three@0.178.1':
     dependencies:
@@ -6325,14 +6162,6 @@ snapshots:
 
   isobject@3.0.1: {}
 
-  its-fine@1.2.5(@types/react@19.1.8)(react@18.3.1):
-    dependencies:
-      '@types/react-reconciler': 0.28.9(@types/react@19.1.8)
-      react: 18.3.1
-    transitivePeerDependencies:
-      - '@types/react'
-    optional: true
-
   its-fine@2.0.0(@types/react@19.1.8)(react@19.1.0):
     dependencies:
       '@types/react-reconciler': 0.28.9(@types/react@19.1.8)
@@ -6733,13 +6562,6 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
 
-  react-dom@18.3.1(react@18.3.1):
-    dependencies:
-      loose-envify: 1.4.0
-      react: 18.3.1
-      scheduler: 0.23.2
-    optional: true
-
   react-dom@19.1.0(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -6754,13 +6576,6 @@ snapshots:
 
   react-is@16.13.1: {}
 
-  react-reconciler@0.27.0(react@18.3.1):
-    dependencies:
-      loose-envify: 1.4.0
-      react: 18.3.1
-      scheduler: 0.21.0
-    optional: true
-
   react-reconciler@0.31.0(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -6768,23 +6583,11 @@ snapshots:
 
   react-refresh@0.17.0: {}
 
-  react-use-measure@2.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-    optionalDependencies:
-      react-dom: 18.3.1(react@18.3.1)
-    optional: true
-
   react-use-measure@2.1.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       react: 19.1.0
     optionalDependencies:
       react-dom: 19.1.0(react@19.1.0)
-
-  react@18.3.1:
-    dependencies:
-      loose-envify: 1.4.0
-    optional: true
 
   react@19.1.0: {}
 
@@ -6843,16 +6646,6 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
-
-  scheduler@0.21.0:
-    dependencies:
-      loose-envify: 1.4.0
-    optional: true
-
-  scheduler@0.23.2:
-    dependencies:
-      loose-envify: 1.4.0
-    optional: true
 
   scheduler@0.25.0: {}
 
@@ -7008,11 +6801,6 @@ snapshots:
     dependencies:
       has-flag: 4.0.0
 
-  suspend-react@0.1.3(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-    optional: true
-
   suspend-react@0.1.3(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -7033,8 +6821,6 @@ snapshots:
       potpack: 1.0.2
       three: 0.178.0
 
-  three@0.177.0: {}
-
   three@0.178.0: {}
 
   tinybench@2.9.0: {}
@@ -7043,7 +6829,7 @@ snapshots:
 
   tinyglobby@0.2.13:
     dependencies:
-      fdir: 6.4.4(picomatch@4.0.2)
+      fdir: 6.4.6(picomatch@4.0.2)
       picomatch: 4.0.2
 
   tinyglobby@0.2.14:
@@ -7132,8 +6918,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  typescript@5.7.3: {}
-
   typescript@5.8.3: {}
 
   ufo@1.6.1: {}
@@ -7192,7 +6976,7 @@ snapshots:
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 6.3.5(@types/node@22.15.16)
+      vite: 7.0.5(@types/node@22.15.16)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -7365,11 +7149,6 @@ snapshots:
   zod@3.24.4: {}
 
   zstddec@0.2.0-alpha.3: {}
-
-  zustand@3.7.2(react@18.3.1):
-    optionalDependencies:
-      react: 18.3.1
-    optional: true
 
   zustand@3.7.2(react@19.1.0):
     optionalDependencies:
