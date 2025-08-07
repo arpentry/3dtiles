@@ -11,22 +11,22 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.830.0",
-    "@cesium/engine": "^15.0.0",
+    "@aws-sdk/client-s3": "^3.862.0",
+    "@cesium/engine": "^19.0.0",
     "@cf-wasm/png": "^0.1.24",
-    "@gltf-transform/core": "^4.1.2",
-    "@gltf-transform/extensions": "^4.1.2",
-    "@gltf-transform/functions": "^4.1.2",
+    "@gltf-transform/core": "^4.2.1",
+    "@gltf-transform/extensions": "^4.2.1",
+    "@gltf-transform/functions": "^4.2.1",
     "@mapbox/martini": "^0.2.0",
-    "@types/proj4": "^2.5.6",
+    "@types/proj4": "^2.19.0",
     "geotiff": "2.1.4-beta.0",
-    "hono": "^4.6.20",
-    "proj4": "^2.15.0"
+    "hono": "^4.8.12",
+    "proj4": "^2.19.10"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "prettier": "^3.5.0",
+    "@cloudflare/workers-types": "^4.20250807.0",
+    "prettier": "^3.6.2",
     "vitest": "^3.2.4",
-    "wrangler": "^4.14.4"
+    "wrangler": "^4.28.0"
   }
 }
