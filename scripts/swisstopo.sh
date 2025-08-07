@@ -19,12 +19,26 @@ check_dependencies() {
     echo "Dependencies: OK"
 }
 
+# Resolution and bounding box settings
+SWISSALTI3D_RESOLUTION=2.0
+SWISSIMAGE_RESOLUTION=2.0
+
+# Matterhorn
+# XMIN=2614999
+# YMIN=1089998
+# XMAX=2618995
+# YMAX=1093977
+
+# Interlaken
+XMIN=2609707
+YMIN=1142897
+XMAX=2650123
+YMAX=1181776
+
 # Data sources
 DATASOURCE_NAMES="swissalti3d swissimage-dop10"
-# DATASOURCE_swissalti3d="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissalti3d/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2529405&yMin=1149425&xMax=2540443&yMax=1162528&csv=true"
-DATASOURCE_swissalti3d="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissalti3d/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2609707&yMin=1142897&xMax=2650123&yMax=1181776&csv=true"
-# DATASOURCE_swissimage_dop10="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissimage-dop10/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2529405&yMin=1149425&xMax=2540443&yMax=1162528&csv=true"
-DATASOURCE_swissimage_dop10="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissimage-dop10/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=2.0&srid=2056&state=current&xMin=2609707&yMin=1142897&xMax=2650123&yMax=1181776&csv=true"
+DATASOURCE_swissalti3d="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissalti3d/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=${SWISSALTI3D_RESOLUTION}&srid=2056&state=current&xMin=${XMIN}&yMin=${YMIN}&xMax=${XMAX}&yMax=${YMAX}&csv=true"
+DATASOURCE_swissimage_dop10="https://ogd.swisstopo.admin.ch/services/swiseld/services/assets/ch.swisstopo.swissimage-dop10/search?format=image%2Ftiff%3B%20application%3Dgeotiff%3B%20profile%3Dcloud-optimized&resolution=${SWISSIMAGE_RESOLUTION}&srid=2056&state=current&xMin=${XMIN}&yMin=${YMIN}&xMax=${XMAX}&yMax=${YMAX}&csv=true"
 
 # Download function
 download_file() {
@@ -92,10 +106,11 @@ process_with_gdal() {
         -co COMPRESS=DEFLATE \
         -co BLOCKSIZE=512 \
         -co OVERVIEWS=IGNORE_EXISTING \
-        -co NUM_THREADS=ALL_CPUS
+        -co NUM_THREADS=ALL_CPUS \
+        -co BIGTIFF=YES
     
     # Create Web Mercator projection
-    gdalwarp "$output_name.tif" "${output_name}_web_mercator.tif" \
+    gdalwarp -overwrite "$output_name.tif" "${output_name}_web_mercator.tif" \
         -t_srs EPSG:3857 \
         -r bilinear \
         -of COG \
@@ -104,7 +119,8 @@ process_with_gdal() {
         -co COMPRESS=DEFLATE \
         -co OVERVIEW_RESAMPLING=AVERAGE \
         -co OVERVIEW_COUNT=10 \
-        -co NUM_THREADS=ALL_CPUS
+        -co NUM_THREADS=ALL_CPUS \
+        -co BIGTIFF=YES
     
     cd ..
 }
@@ -119,6 +135,8 @@ upload_to_r2() {
     local connect_timeout=60
     
     echo "Uploading: $(basename "$local_file")"
+
+    # Upload to S3
     AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
     AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
     aws s3 cp "$local_file" "s3://$R2_BUCKET_NAME/$remote_key" \
@@ -150,12 +168,12 @@ main() {
     for datasource in $DATASOURCE_NAMES; do
         datasource_var="DATASOURCE_${datasource//-/_}"
         datasource_url="${!datasource_var}"
-        process_data_source "$datasource" "$datasource_url"
+        #process_data_source "$datasource" "$datasource_url"
     done
     
     # Process with GDAL
-    process_with_gdal "swissalti3d" "swissalti3d"
-    process_with_gdal "swissimage-dop10" "swissimage"
+    #process_with_gdal "swissalti3d" "swissalti3d"
+    #process_with_gdal "swissimage-dop10" "swissimage"
     
     # Upload to R2
     upload_files

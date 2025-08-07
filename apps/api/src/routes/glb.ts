@@ -39,7 +39,7 @@ let TILESET_CENTER: [number, number] | null = null;
 glb.get('/tileset.json', async (c) => {
   console.log('🌍 Tileset JSON endpoint');
   try {
-    const elevKey = 'downloads_swissalti3d/swissalti3d_web_mercator.tif';
+    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
     console.log('🌍 Elevation URL:', url);
 
@@ -107,7 +107,7 @@ glb.get('/tiles/:level/:x/:y/tile.glb', async (c) => {
     return c.json({ error: 'Global bounds not available' }, 500);
   }
 
-  const elevKey = 'downloads_swissalti3d/swissalti3d_web_mercator.tif';
+  const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
   const texKey = 'swissimage-dop10/swissimage_web_mercator.tif';
   const elevURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
   const texURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
