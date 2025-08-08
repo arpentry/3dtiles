@@ -3,10 +3,12 @@
   "name": "3dtiles-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-02-12",
-  "vars": {
-    "SERVER_URL": "http://localhost:8787"
-  },
   "assets": {
     "directory": "public"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
   }
 }
