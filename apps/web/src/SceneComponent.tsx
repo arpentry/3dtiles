@@ -123,9 +123,7 @@ export default function SceneComponent() {
           samples={samples}
         />
       </EffectComposer>
-      <Tiles3D
-        url={`${import.meta.env.VITE_TILES_URL}/tileset.json`}
-      />
+      <Tiles3D url={`${import.meta.env.VITE_TILES_URL}/tileset.json`} />
 
       <CloudsComponent />
     </>
