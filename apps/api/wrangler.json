@@ -10,5 +10,11 @@
     "logs": {
       "enabled": true
     }
+  },
+  "env": {
+    "R2_PUBLIC_ARPENTRY_ENDPOINT": "http://localhost:8787"
+  },
+  "limits": {
+    "cpu_ms": 600000
   }
 }
