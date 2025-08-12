@@ -14,9 +14,6 @@
   "env": {
     "R2_PUBLIC_ARPENTRY_ENDPOINT": "http://localhost:8787"
   },
-  "limits": {
-    "cpu_ms": 600000
-  },
   "kv_namespaces": [
     {
       "binding": "KV_ARPENTRY",
