@@ -4,15 +4,10 @@ import { cors } from 'hono/cors';
 import tms from './routes/tms';
 import glb from './routes/glb';
 
-// Define environment variable types
-type Bindings = {
-  R2_PUBLIC_ARPENTRY_ENDPOINT: string;
-};
-
 /**
  * Server
  */
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono();
 
 app.use(
   '*',
@@ -20,6 +15,19 @@ app.use(
     origin: '*',
   }),
 );
+
+// const getR2ObjectETag = async (key: string): Promise<string> => {
+//   const response = await fetch(`${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${key}`, {
+//     method: 'HEAD', // Only get headers, not content
+//   });
+
+//   return response.headers.get('ETag') || '';
+// };
+
+// const invalidateCache = async (c: Context) => {
+//   await c.env.KV_ARPENTRY.delete('global_bounds');
+//   await c.env.KV_ARPENTRY.delete('tileset_center');
+// };
 
 // Mount TMS routes
 app.route('/tms', tms);
