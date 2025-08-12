@@ -39,10 +39,10 @@ let TILESET_CENTER: Coordinate | null = null;
  */
 glb.get(
   '/tileset.json',
-  // cache({
-  //   cacheName: 'tileset',
-  //   cacheControl: 'max-age=3600',
-  // }),
+  cache({
+    cacheName: 'tileset',
+    cacheControl: 'max-age=3600',
+  }),
   async (c) => {
     console.log('🌍 Tileset JSON endpoint');
     try {
