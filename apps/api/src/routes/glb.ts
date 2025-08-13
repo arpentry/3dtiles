@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { cache } from 'hono/cache';
 import { createSquareBounds } from '../utils/geometry';
 import {
@@ -14,7 +14,6 @@ import {
 } from '../services/mesh';
 import { buildGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
-import { getR2ObjectETag } from '../services/r2';
 
 type Bindings = {
   R2_PUBLIC_ARPENTRY_ENDPOINT: string;
@@ -30,86 +29,71 @@ type Coordinate = [number, number];
 const TILE_SIZE = 512;
 const QUADTREE_MAX_LEVEL = 5;
 
-// Global coordinate system reference
-let GLOBAL_BOUNDS: Bounds | null = null;
-let TILESET_CENTER: Coordinate | null = null;
+const fetchGlobalBounds = async (
+  url: string,
+): Promise<{
+  globalBounds: Bounds;
+  tilesetCenter: Coordinate;
+}> => {
+  try {
+    const { bbox } = await getTiffMetadata(url);
+    console.log('🌍 Bounding box fetched:', bbox);
+
+    const bounds = createSquareBounds(bbox as Bounds);
+    console.log('🌍 Square bounds created:', bounds);
+
+    return {
+      globalBounds: bounds,
+      tilesetCenter: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
+    };
+  } catch (err) {
+    console.error('Failed to fetch global bounds for url:', url, err);
+    throw err;
+  }
+};
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
  */
-glb.get(
-  '/tileset.json',
-  cache({
-    cacheName: 'tileset',
-    cacheControl: 'max-age=3600',
-  }),
-  async (c) => {
-    console.log('🌍 Tileset JSON endpoint');
-    try {
-      const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
-      const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
-      console.log('🌍 Elevation URL:', url);
+glb.get('/tileset.json', async (c: Context) => {
+  console.log('🌍 Tileset JSON endpoint');
+  try {
+    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
+    const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
+    console.log('🌍 Elevation URL:', url);
 
-      console.log('🌍 Fetching elevation metadata...');
-      const { bbox } = await getTiffMetadata(url);
-      console.log('🌍 Elevation metadata fetched');
-      console.log('🌍 Bounding box:', bbox);
+    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(url);
 
-      console.log('🌍 Creating square bounds...');
-      const square = createSquareBounds(bbox as Bounds);
-      console.log('🌍 Square bounds created');
-      console.log('🌍 Square bounds:', square);
+    const minH = 0;
+    const maxH = 4500; // Swiss terrain height range
 
-      // Store global bounds for consistent coordinate system
-      GLOBAL_BOUNDS = square;
-      TILESET_CENTER = [
-        (square[0] + square[2]) / 2,
-        (square[1] + square[3]) / 2,
-      ];
+    console.log('🌍 Tileset coordinate system:', {
+      web_mercator_bounds: `${globalBounds}, ${globalBounds} to ${globalBounds}, ${globalBounds}`,
+      web_mercator_center: `${tilesetCenter[0].toFixed(0)}, ${tilesetCenter[1].toFixed(0)}`,
+      size_km: {
+        width: ((globalBounds[2] - globalBounds[0]) / 1000).toFixed(1),
+        height: ((globalBounds[3] - globalBounds[1]) / 1000).toFixed(1),
+      },
+    });
 
-      const globalBounds = await c.env.KV_ARPENTRY.put(
-        'global_bounds',
-        JSON.stringify(square),
-      );
-      const tilesetCenter = await c.env.KV_ARPENTRY.put(
-        'tileset_center',
-        JSON.stringify(TILESET_CENTER),
-      );
+    const root = createRootTile(
+      globalBounds,
+      tilesetCenter,
+      minH,
+      maxH,
+      QUADTREE_MAX_LEVEL,
+    );
 
-      console.log('🌍 Global bounds stored in KV', globalBounds);
-      console.log('🌍 Tileset center stored in KV', tilesetCenter);
-
-      const minH = 0;
-      const maxH = 4500; // Swiss terrain height range
-
-      console.log('🌍 Tileset coordinate system:', {
-        web_mercator_bounds: `${square[0].toFixed(0)}, ${square[1].toFixed(0)} to ${square[2].toFixed(0)}, ${square[3].toFixed(0)}`,
-        web_mercator_center: `${TILESET_CENTER[0].toFixed(0)}, ${TILESET_CENTER[1].toFixed(0)}`,
-        size_km: {
-          width: ((square[2] - square[0]) / 1000).toFixed(1),
-          height: ((square[3] - square[1]) / 1000).toFixed(1),
-        },
-      });
-
-      const root = createRootTile(
-        square,
-        TILESET_CENTER,
-        minH,
-        maxH,
-        QUADTREE_MAX_LEVEL,
-      );
-
-      return c.json({
-        asset: { version: '1.1', gltfUpAxis: 'Z' },
-        geometricError: 5000,
-        root,
-      });
-    } catch (err) {
-      console.error('Tileset error:', err);
-      return c.json({ error: 'Failed to build tileset' }, 500);
-    }
-  },
-);
+    return c.json({
+      asset: { version: '1.1', gltfUpAxis: 'Z' },
+      geometricError: 5000,
+      root,
+    });
+  } catch (err) {
+    console.error('Tileset error:', err);
+    return c.json({ error: 'Failed to build tileset' }, 500);
+  }
+});
 
 /**
  * GLB tile endpoint - generates individual terrain tiles
@@ -120,42 +104,14 @@ glb.get(
     cacheName: 'tiles',
     cacheControl: 'max-age=3600',
   }),
-  async (c) => {
+  async (c: Context) => {
     const level = Number(c.req.param('level'));
     const x = Number(c.req.param('x'));
     const y = Number(c.req.param('y'));
-
     console.log(`🏗️ Generating tile ${level}/${x}/${y}`);
 
     if (isNaN(level) || isNaN(x) || isNaN(y)) {
       return c.json({ error: 'Invalid tile coordinates' }, 400);
-    }
-
-    // Fetch and initialize global bounds and tileset center from KV if not initialized yet
-    if (!GLOBAL_BOUNDS || !TILESET_CENTER) {
-      console.error(
-        '❌ Global bounds and/or tileset center not initialized, fetching from KV...',
-      );
-      try {
-        const globalBounds = (await c.env.KV_ARPENTRY.get(
-          'global_bounds',
-        )) as string;
-        const tilesetCenter = (await c.env.KV_ARPENTRY.get(
-          'tileset_center',
-        )) as string;
-
-        GLOBAL_BOUNDS = JSON.parse(globalBounds) as Bounds;
-        TILESET_CENTER = JSON.parse(tilesetCenter) as Coordinate;
-
-        console.log(
-          '🌍 KV fetched, global bounds and tileset center initialized',
-        );
-      } catch (err) {
-        const errorMessage =
-          'Failed to fetch from KV, global bounds and tileset center cannot be initialized';
-        console.error('❌ ', errorMessage, err);
-        return c.json({ error: errorMessage }, 500);
-      }
     }
 
     const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
@@ -163,9 +119,11 @@ glb.get(
     const elevURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
     const texURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
 
+    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(elevURL);
+
     try {
       // 1. Calculate tile bounds
-      const tileBounds = calculateTileBounds(level, x, y, GLOBAL_BOUNDS);
+      const tileBounds = calculateTileBounds(level, x, y, globalBounds);
 
       console.log(
         `   📍 Tile bounds: ${tileBounds.westDeg.toFixed(4)}°, ${tileBounds.southDeg.toFixed(4)}° to ${tileBounds.eastDeg.toFixed(4)}°, ${tileBounds.northDeg.toFixed(4)}°`,
@@ -186,7 +144,7 @@ glb.get(
         terrainMesh.vertices,
         terrainMesh.terrainGrid,
         elevationBbox,
-        TILESET_CENTER,
+        tilesetCenter,
         TILE_SIZE,
       );
 
