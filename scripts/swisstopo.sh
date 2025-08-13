@@ -168,12 +168,12 @@ main() {
     for datasource in $DATASOURCE_NAMES; do
         datasource_var="DATASOURCE_${datasource//-/_}"
         datasource_url="${!datasource_var}"
-        #process_data_source "$datasource" "$datasource_url"
+        process_data_source "$datasource" "$datasource_url"
     done
     
     # Process with GDAL
-    #process_with_gdal "swissalti3d" "swissalti3d"
-    #process_with_gdal "swissimage-dop10" "swissimage"
+    process_with_gdal "swissalti3d" "swissalti3d"
+    process_with_gdal "swissimage-dop10" "swissimage"
     
     # Upload to R2
     upload_files
