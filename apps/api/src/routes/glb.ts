@@ -15,6 +15,7 @@ import {
 import { buildGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
 import { Bindings } from '../index';
+import { memoize } from '../utils/memoize';
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
@@ -33,11 +34,7 @@ const fetchGlobalBounds = async (
 }> => {
   try {
     const { bbox } = await getTiffMetadata(url);
-    console.log('🌍 Bounding box fetched:', bbox);
-
     const bounds = createSquareBounds(bbox as Bounds);
-    console.log('🌍 Square bounds created:', bounds);
-
     return {
       globalBounds: bounds,
       tilesetCenter: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
@@ -47,6 +44,8 @@ const fetchGlobalBounds = async (
     throw err;
   }
 };
+
+const fetchMemoizedGlobalBounds = memoize(fetchGlobalBounds);
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
@@ -58,7 +57,7 @@ glb.get('/tileset.json', async (c: Context) => {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
     console.log('🌍 Elevation URL:', url);
 
-    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(url);
+    const { globalBounds, tilesetCenter } = await fetchMemoizedGlobalBounds(url);
 
     const minH = 0;
     const maxH = 4500; // Swiss terrain height range
@@ -115,7 +114,7 @@ glb.get(
     const elevationURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevationFile}`;
     const textureURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${textureFile}`;
 
-    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(elevationURL);
+    const { globalBounds, tilesetCenter } = await fetchMemoizedGlobalBounds(elevationURL);
 
     try {
       // 1. Calculate tile bounds
