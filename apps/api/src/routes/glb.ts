@@ -1,10 +1,11 @@
 import { Hono, Context } from 'hono';
 import { cache } from 'hono/cache';
-import { createSquareBounds } from '../utils/geometry';
 import {
-  getTiffMetadata,
   readElevationData,
   generateTexture,
+  fetchMemoizedGlobalBounds,
+  TILE_SIZE,
+  QUADTREE_MAX_LEVEL,
 } from '../services/raster';
 import {
   generateTerrainMesh,
@@ -15,37 +16,8 @@ import {
 import { buildGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
 import { Bindings } from '../index';
-import { memoize } from '../utils/memoize';
 
 const glb = new Hono<{ Bindings: Bindings }>();
-
-type Bounds = [number, number, number, number];
-type Coordinate = [number, number];
-
-// Configuration
-const TILE_SIZE = 512;
-const QUADTREE_MAX_LEVEL = 5;
-
-const fetchGlobalBounds = async (
-  url: string,
-): Promise<{
-  globalBounds: Bounds;
-  tilesetCenter: Coordinate;
-}> => {
-  try {
-    const { bbox } = await getTiffMetadata(url);
-    const bounds = createSquareBounds(bbox as Bounds);
-    return {
-      globalBounds: bounds,
-      tilesetCenter: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
-    };
-  } catch (err) {
-    console.error('Failed to fetch global bounds for url:', url, err);
-    throw err;
-  }
-};
-
-const fetchMemoizedGlobalBounds = memoize(fetchGlobalBounds);
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure

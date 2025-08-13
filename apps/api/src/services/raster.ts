@@ -1,5 +1,7 @@
 import { fromUrl } from 'geotiff';
 import { encode } from '@cf-wasm/png';
+import { createSquareBounds } from '../utils/geometry';
+import { memoize } from '../utils/memoize';
 
 export interface TileBounds {
   minX: number;
@@ -12,7 +14,38 @@ export interface TileBounds {
   northDeg: number;
 }
 
+export type Bounds = [number, number, number, number];
+export type Coordinate = [number, number];
+
+// Configuration
+export const TILE_SIZE = 512;
+export const QUADTREE_MAX_LEVEL = 5;
+
 const ELEV_NO_DATA = -9999;
+
+/**
+ * Fetch global bounds and tileset center from a raster URL
+ */
+export const fetchGlobalBounds = async (
+  url: string,
+): Promise<{
+  globalBounds: Bounds;
+  tilesetCenter: Coordinate;
+}> => {
+  try {
+    const { bbox } = await getTiffMetadata(url);
+    const bounds = createSquareBounds(bbox as Bounds);
+    return {
+      globalBounds: bounds,
+      tilesetCenter: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
+    };
+  } catch (err) {
+    console.error('Failed to fetch global bounds for url:', url, err);
+    throw err;
+  }
+};
+
+export const fetchMemoizedGlobalBounds = memoize(fetchGlobalBounds);
 
 /**
  * Read elevation data from TIFF file
