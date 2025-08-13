@@ -1,11 +1,9 @@
 import { Hono, Context } from 'hono';
 import { cache } from 'hono/cache';
 import {
-  readElevationData,
-  generateTexture,
+  readElevationRaster,
+  generateTexturePng,
   fetchGlobalBounds,
-  TILE_SIZE,
-  QUADTREE_MAX_LEVEL,
 } from '../services/raster';
 import {
   generateTerrainMesh,
@@ -13,15 +11,17 @@ import {
   buildTriangleIndices,
   computeVertexNormals,
 } from '../services/mesh';
-import { buildGltfDocument } from '../services/gltf';
+import { createGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
 import { Bindings } from '../index';
 import { memoize } from '../utils/memoize';
 
+export const TILE_SIZE = 512;
+export const QUADTREE_MAX_LEVEL = 5;
+
 const glb = new Hono<{ Bindings: Bindings }>();
 
 export const memoizedGlobalBounds = memoize(fetchGlobalBounds);
-
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
@@ -105,7 +105,7 @@ glb.get(
 
       // 2. Read elevation data
       const { data: elevationData, bbox: elevationBbox } =
-        await readElevationData(elevationURL, tileBounds, TILE_SIZE);
+        await readElevationRaster(elevationURL, tileBounds, TILE_SIZE);
 
       // 3. Generate terrain mesh
       const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
@@ -144,13 +144,13 @@ glb.get(
       }
 
       // 6. Generate optional texture
-      const texture = await generateTexture(textureURL, tileBounds, TILE_SIZE);
+      const texture = await generateTexturePng(textureURL, tileBounds, TILE_SIZE);
       if (texture) {
         console.log('   🖼️ Texture generated');
       }
 
       // 7. Build glTF document
-      const glbBuffer = await buildGltfDocument(
+      const glbBuffer = await createGltfDocument(
         meshGeometry.positions,
         meshGeometry.uvs,
         triangleIndices.indices,

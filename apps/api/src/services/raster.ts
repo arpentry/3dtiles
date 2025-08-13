@@ -1,7 +1,6 @@
 import { fromUrl } from 'geotiff';
 import { encode } from '@cf-wasm/png';
 import { createSquareBounds } from '../utils/geometry';
-import { memoize } from '../utils/memoize';
 
 export interface TileBounds {
   minX: number;
@@ -14,24 +13,36 @@ export interface TileBounds {
   northDeg: number;
 }
 
+// Web Mercator bounds as [minX, minY, maxX, maxY]
 export type Bounds = [number, number, number, number];
 export type Coordinate = [number, number];
 
-// Configuration
-export const TILE_SIZE = 512;
-export const QUADTREE_MAX_LEVEL = 5;
+// PNG payload encoded as RGBA8
 
-const ELEV_NO_DATA = -9999;
+export interface GlobalBoundsInfo {
+  globalBounds: Bounds;
+  tilesetCenter: Coordinate;
+}
+
+export interface ElevationRaster {
+  data: TypedArray;
+  bbox: Bounds;
+}
+
+export interface TiffMetadata {
+  bbox: Bounds;
+  width: number;
+  height: number;
+}
+
+const ELEVATION_NO_DATA = -9999;
 
 /**
  * Fetch global bounds and tileset center from a raster URL
  */
 export const fetchGlobalBounds = async (
   url: string,
-): Promise<{
-  globalBounds: Bounds;
-  tilesetCenter: Coordinate;
-}> => {
+): Promise<GlobalBoundsInfo> => {
   try {
     const { bbox } = await getTiffMetadata(url);
     const bounds = createSquareBounds(bbox as Bounds);
@@ -45,43 +56,49 @@ export const fetchGlobalBounds = async (
   }
 };
 
-/**
- * Read elevation data from TIFF file
- */
-export async function readElevationData(
-  elevURL: string,
+// Compute a clamped bounding box, expanded by one pixel east/south to ensure seamless edges
+function computeExpandedClampedBbox(
+  imageBbox: Bounds,
   tileBounds: TileBounds,
   tileSize: number,
-): Promise<{ data: TypedArray; bbox: number[] }> {
-  const tiff = await fromUrl(elevURL);
-  const image = await tiff.getImage();
-  const globalBbox = image.getBoundingBox();
-
-  // Calculate the size of one pixel in Mercator coordinates
+): Bounds {
   const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
   const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
 
-  // Expand the bounding box by one pixel on the right and bottom edges
-  const expandedBbox = [
+  const expandedBbox: Bounds = [
     tileBounds.minX,
-    tileBounds.minY - pixelHeight, // Extend south
-    tileBounds.maxX + pixelWidth, // Extend east
+    tileBounds.minY - pixelHeight, // extend south
+    tileBounds.maxX + pixelWidth, // extend east
     tileBounds.maxY,
   ];
 
-  // Clamp the expanded bounding box to the global bounding box of the TIFF
-  const clampedBbox = [
-    Math.max(expandedBbox[0], globalBbox[0]),
-    Math.max(expandedBbox[1], globalBbox[1]),
-    Math.min(expandedBbox[2], globalBbox[2]),
-    Math.min(expandedBbox[3], globalBbox[3]),
+  return [
+    Math.max(expandedBbox[0], imageBbox[0]),
+    Math.max(expandedBbox[1], imageBbox[1]),
+    Math.min(expandedBbox[2], imageBbox[2]),
+    Math.min(expandedBbox[3], imageBbox[3]),
   ];
+}
+
+/**
+ * Read elevation data from TIFF file
+ */
+export async function readElevationRaster(
+  elevationUrl: string,
+  tileBounds: TileBounds,
+  tileSize: number,
+): Promise<ElevationRaster> {
+  const tiff = await fromUrl(elevationUrl);
+  const image = await tiff.getImage();
+  const imageBbox = image.getBoundingBox() as Bounds;
+
+  const clampedBbox = computeExpandedClampedBbox(imageBbox, tileBounds, tileSize);
 
   const raster = await tiff.readRasters({
     bbox: clampedBbox,
     width: tileSize + 1,
     height: tileSize + 1,
-    fillValue: ELEV_NO_DATA,
+    fillValue: ELEVATION_NO_DATA,
   });
 
   if (!raster || !raster[0] || typeof raster[0] === 'number') {
@@ -94,79 +111,61 @@ export async function readElevationData(
 /**
  * Generate texture from TIFF file
  */
-export async function generateTexture(
-  texURL: string,
+export async function generateTexturePng(
+  textureUrl: string,
   tileBounds: TileBounds,
   tileSize: number,
-): Promise<Uint8Array | undefined> {
-  try {
-    const texTiff = await fromUrl(texURL);
-    const image = await texTiff.getImage();
-    const globalBbox = image.getBoundingBox();
+): Promise<Uint8Array> {
+  const tiff = await fromUrl(textureUrl);
+  const image = await tiff.getImage();
+  const imageBbox = image.getBoundingBox() as Bounds;
 
-    // Calculate the size of one pixel in Mercator coordinates
-    const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
-    const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
+  const clampedBbox = computeExpandedClampedBbox(imageBbox, tileBounds, tileSize);
 
-    // Expand the bounding box by one pixel on the right and bottom edges
-    const expandedBbox = [
-      tileBounds.minX,
-      tileBounds.minY - pixelHeight, // Extend south
-      tileBounds.maxX + pixelWidth, // Extend east
-      tileBounds.maxY,
-    ];
+  const raster = await tiff.readRasters({
+    bbox: clampedBbox,
+    width: tileSize + 1,
+    height: tileSize + 1,
+    resampleMethod: 'bilinear',
+  });
 
-    // Clamp the expanded bounding box to the global bounding box of the TIFF
-    const clampedBbox = [
-      Math.max(expandedBbox[0], globalBbox[0]),
-      Math.max(expandedBbox[1], globalBbox[1]),
-      Math.min(expandedBbox[2], globalBbox[2]),
-      Math.min(expandedBbox[3], globalBbox[3]),
-    ];
-
-    const texRaster = await texTiff.readRasters({
-      bbox: clampedBbox,
-      width: tileSize + 1,
-      height: tileSize + 1,
-      resampleMethod: 'bilinear',
-    });
-
-    if (!Array.isArray(texRaster)) {
-      return undefined;
-    }
-
-    const img = new Uint8Array((tileSize + 1) * (tileSize + 1) * 4);
-    const bands = texRaster.length;
-    const outputSize = tileSize + 1;
-
-    for (let i = 0; i < outputSize * outputSize; ++i) {
-      const bi = i * 4;
-      if (bands >= 3) {
-        img[bi] = Number((texRaster[0] as TypedArray)[i]);
-        img[bi + 1] = Number((texRaster[1] as TypedArray)[i]);
-        img[bi + 2] = Number((texRaster[2] as TypedArray)[i]);
-        img[bi + 3] = 255;
-      } else {
-        const g = Number((texRaster[0] as TypedArray)[i]);
-        img[bi] = img[bi + 1] = img[bi + 2] = g;
-        img[bi + 3] = 255;
-      }
-    }
-
-    return encode(img, outputSize, outputSize);
-  } catch {
-    return undefined;
+  const bands = Array.isArray(raster) ? (raster as unknown as TypedArray[]) : [raster as TypedArray];
+  if (bands.length === 0) {
+    throw new Error('No texture data available');
   }
+
+  const outputSize = tileSize + 1;
+  const pixelCount = outputSize * outputSize;
+  const rgbaPixels = new Uint8Array(pixelCount * 4);
+  const numBands = bands.length;
+
+  for (let i = 0; i < pixelCount; ++i) {
+    const baseIndex = i * 4;
+    if (numBands >= 3) {
+      rgbaPixels[baseIndex] = Number(bands[0][i]);
+      rgbaPixels[baseIndex + 1] = Number(bands[1][i]);
+      rgbaPixels[baseIndex + 2] = Number(bands[2][i]);
+      rgbaPixels[baseIndex + 3] = 255;
+    } else {
+      const grayscale = Number(bands[0][i]);
+      rgbaPixels[baseIndex] = grayscale;
+      rgbaPixels[baseIndex + 1] = grayscale;
+      rgbaPixels[baseIndex + 2] = grayscale;
+      rgbaPixels[baseIndex + 3] = 255;
+    }
+  }
+
+  return encode(rgbaPixels, outputSize, outputSize);
 }
 
 /**
  * Get TIFF metadata for TMS services
  */
-export async function getTiffMetadata(url: string) {
+export async function getTiffMetadata(url: string): Promise<TiffMetadata> {
   const tiff = await fromUrl(url);
   const image = await tiff.getImage();
   return {
-    bbox: image.getBoundingBox(),
+    bbox: image.getBoundingBox() as Bounds,
     width: image.getWidth(),
     height: image.getHeight(),
   };

@@ -1,9 +1,9 @@
 import { Document, NodeIO, TextureInfo } from '@gltf-transform/core';
 
 /**
- * Build glTF document from mesh geometry and optional texture
+ * Create a glTF document
  */
-export async function buildGltfDocument(
+export async function createGltfDocument(
   positions: number[],
   uvs: number[],
   indices: number[],
