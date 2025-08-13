@@ -2,6 +2,7 @@
   "name": "3dtiles-api",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "wrangler build",
     "deploy": "wrangler deploy --minify",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",

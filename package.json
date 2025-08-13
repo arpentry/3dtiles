@@ -6,6 +6,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --parallel dev",
+    "build": "pnpm --parallel build",
+    "deploy": "pnpm --parallel deploy",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:api": "pnpm --filter 3dtiles-api lint",
