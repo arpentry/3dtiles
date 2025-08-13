@@ -45,8 +45,6 @@ export const fetchGlobalBounds = async (
   }
 };
 
-export const fetchMemoizedGlobalBounds = memoize(fetchGlobalBounds);
-
 /**
  * Read elevation data from TIFF file
  */
