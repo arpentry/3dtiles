@@ -5,6 +5,16 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { DebugTilesPlugin } from '3d-tiles-renderer/plugins';
 
+// LOD Colors for level-based visualization
+const LOD_COLORS = [
+  new THREE.Color(0x0000FF), // Level 0 : blue
+  new THREE.Color(0xA300E2), // Level 1 : violet
+  new THREE.Color(0xF60081), // Level 2 : red
+  new THREE.Color(0xDDB500), // Level 3 : orange
+  new THREE.Color(0xDDB500), // Level 4 : yellow
+  new THREE.Color(0x00FF00), // Level 5 : green
+];
+
 // @ts-ignore
 import { TopoLinesPlugin } from './plugins/topolines/TopoLinesPlugin';
 
@@ -30,10 +40,11 @@ export default function Tiles3D({ url }: { url: string }) {
   );
 
   // Debug Visualization
-  const { displayBoxBounds, enableTopoLines, topoOpacity } = useControls(
+  const { displayBoxBounds, enableLODColoring, enableTopoLines, topoOpacity } = useControls(
     '3D Tiles - Debug',
     {
       displayBoxBounds: true,
+      enableLODColoring: false,
       enableTopoLines: false,
       topoOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
     },
@@ -51,7 +62,20 @@ export default function Tiles3D({ url }: { url: string }) {
 
   useEffect(() => {
     const tiles = new TilesRenderer(url);
-    tiles.registerPlugin(new DebugTilesPlugin());
+
+    // Create DebugTilesPlugin with LOD-based coloring
+    const debugPlugin = new DebugTilesPlugin({
+      displayBoxBounds: displayBoxBounds,
+      colorMode: enableLODColoring ? 9 : 0, // 9 = CUSTOM_COLOR, 0 = NONE
+      customColorCallback: enableLODColoring ? (tile: any, child: any) => {
+        const colorIndex = tile.__depth % LOD_COLORS.length;
+        child.material.color.copy(LOD_COLORS[colorIndex]);
+      } : undefined,
+      enabled: true,
+    });
+
+    tiles.registerPlugin(debugPlugin);
+
     if (enableTopoLines) {
       tiles.registerPlugin(new TopoLinesPlugin());
     }
@@ -91,6 +115,8 @@ export default function Tiles3D({ url }: { url: string }) {
     errorTarget,
     maxDepth,
     displayActiveTiles,
+    displayBoxBounds,
+    enableLODColoring,
     enableTopoLines,
     minDistance,
     cameraRadius,
@@ -103,7 +129,6 @@ export default function Tiles3D({ url }: { url: string }) {
       const debugTilesPlugin = tilesRendererRef.current.getPluginByName(
         'DEBUG_TILES_PLUGIN',
       ) as DebugTilesPlugin;
-      debugTilesPlugin.displayBoxBounds = displayBoxBounds;
 
       if (enableTopoLines) {
         const topoLinesPlugin = tilesRendererRef.current.getPluginByName(
