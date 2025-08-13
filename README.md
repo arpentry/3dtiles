@@ -67,6 +67,24 @@ R2_BUCKET_NAME=your_bucket
 R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
 ```
 
+## Topographic Data Download and Processing
+
+### Swiss Topographic Data
+
+Download and process Swiss topo data using the provided script.
+
+```bash
+bash scripts/swisstopo.sh
+```
+
+You can edit the `XMIN`, `YMIN`, `XMAX`, `YMAX` LV95 coordinates variables to change the geographical region.
+
+This script:
+
+- Downloads elevation data and texture from SwissTopo
+- Process and generates the GeoTiffs raster
+- Optionally uploads to Cloudflare R2
+
 ## Development
 
 ### Start Development Servers
@@ -81,22 +99,6 @@ pnpm --filter 3dtiles-web dev    # Web app on :5173
 ```
 
 Note: you can also run `pnpm dev` from each app
-
-## Data Processing
-
-### Swiss Topographic Data
-
-Download and process Swiss topo data
-
-```bash
-bash scripts/swisstopo.sh
-```
-
-This script:
-
-- Downloads elevation data from SwissTopo
-- Generates GeoTiff
-- Optionally uploads to Cloudflare R2
 
 ## Project Structure
 
