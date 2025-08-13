@@ -110,12 +110,12 @@ glb.get(
       return c.json({ error: 'Invalid tile coordinates' }, 400);
     }
 
-    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
-    const texKey = 'swissimage-dop10/swissimage_web_mercator.tif';
-    const elevURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
-    const texURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${texKey}`;
+    const elevationFile = 'swissalti3d/swissalti3d_web_mercator.tif';
+    const textureFile = 'swissimage-dop10/swissimage_web_mercator.tif';
+    const elevationURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevationFile}`;
+    const textureURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${textureFile}`;
 
-    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(elevURL);
+    const { globalBounds, tilesetCenter } = await fetchGlobalBounds(elevationURL);
 
     try {
       // 1. Calculate tile bounds
@@ -130,7 +130,7 @@ glb.get(
 
       // 2. Read elevation data
       const { data: elevationData, bbox: elevationBbox } =
-        await readElevationData(elevURL, tileBounds, TILE_SIZE);
+        await readElevationData(elevationURL, tileBounds, TILE_SIZE);
 
       // 3. Generate terrain mesh
       const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
@@ -169,7 +169,7 @@ glb.get(
       }
 
       // 6. Generate optional texture
-      const texture = await generateTexture(texURL, tileBounds, TILE_SIZE);
+      const texture = await generateTexture(textureURL, tileBounds, TILE_SIZE);
       if (texture) {
         console.log('   🖼️ Texture generated');
       }
