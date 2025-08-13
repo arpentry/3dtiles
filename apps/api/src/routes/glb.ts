@@ -14,11 +14,7 @@ import {
 } from '../services/mesh';
 import { buildGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createRootTile } from '../services/tiles';
-
-type Bindings = {
-  R2_PUBLIC_ARPENTRY_ENDPOINT: string;
-  KV_ARPENTRY: KVNamespace;
-};
+import { Bindings } from '../index';
 
 const glb = new Hono<{ Bindings: Bindings }>();
 

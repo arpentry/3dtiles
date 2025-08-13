@@ -9,15 +9,7 @@ import {
 import { tileToRegionSquare, createSquareBounds } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
 import { getTiffMetadata } from '../services/raster';
-
-type Bindings = {
-  R2_ACCOUNT_ID: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_BUCKET_NAME: string;
-  R2_ENDPOINT: string;
-  R2_PUBLIC_ARPENTRY_ENDPOINT: string;
-};
+import { Bindings } from '../index';
 
 const tms = new Hono<{ Bindings: Bindings }>();
 
