@@ -109,37 +109,53 @@ This script:
 
 ## Development
 
-### Start Development Servers
+### Available Commands
+
+All commands run from the root directory and execute in parallel across all workspaces:
 
 ```bash
-# Start both API and web app simultaneously
-pnpm dev
+# Development
+pnpm dev          # Start development servers (API on :8787, Web on :5173)
 
-# Or start individually:
-pnpm --filter 3dtiles-api dev    # API on :8787
-pnpm --filter 3dtiles-web dev    # Web app on :5173
+# Building
+pnpm build        # Build all applications
+
+# Testing
+pnpm test         # Run tests in watch mode
+pnpm test:run     # Run tests once
+pnpm test:ui      # Open Vitest UI
+
+# Linting
+pnpm lint         # Check code style
+pnpm lint:fix     # Fix code style issues
+
+# Deployment
+pnpm deploy       # Deploy all applications
 ```
 
-Note: you can also run `pnpm dev` from each app
+### Development Workflow
 
-## Project Structure
+1. **Start development servers:**
+   ```bash
+   pnpm dev
+   ```
+   This starts both the API server (port 8787) and web app (port 5173) simultaneously.
 
-```
-3dtiles/
-├── apps/
-│   ├── api/                 # Cloudflare Worker API
-│   │   ├── src/
-│   │   │   ├── routes/      # API endpoints
-│   │   │   ├── services/    # Business logic
-│   │   │   └── utils/       # Utilities
-│   │   └── wrangler.json    # Cloudflare config
-│   └── web/                 # React frontend
-│       ├── src/
-│       │   ├── plugins/     # Three.js custom plugins
-│       │   └── components/  # React components
-│       └── vite.config.ts   # Build config
-└── scripts/                  # SwissTopo scripts
-```
+2. **Access the applications:**
+   - WEB: http://localhost:5173
+   - API: http://localhost:8787
+
+3. **Run tests:**
+   ```bash
+   pnpm test       # Watch mode
+   pnpm test:ui    # Interactive UI
+   ```
+
+4. **Check code quality:**
+   ```bash
+   pnpm lint
+   pnpm lint:fix
+   ```
 
 ## License
 
