@@ -21,8 +21,6 @@ import {
   SWISS_MIN_ELEVATION,
   SWISS_MAX_ELEVATION,
   TILE_CACHE_DURATION,
-  ELEVATION_FILE,
-  TEXTURE_FILE,
   GLB_CONTENT_TYPE,
 } from './constants';
 
@@ -30,7 +28,8 @@ import {
  * Shared environment bindings type
  */
 export type Bindings = {
-  R2_PUBLIC_ARPENTRY_ENDPOINT: string;
+  ELEVATION_DATA_URL: string;
+  TEXTURE_DATA_URL: string;
 };
 
 // Memoized metadata reader for performance optimization
@@ -39,17 +38,6 @@ export const memoizedTiffMetadata = memoize(readGeoTiffMetadata);
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
-
-/**
- * Build data URL from environment and file path
- * 
- * @param env - Environment bindings
- * @param filePath - Path to the data file
- * @returns Complete URL to the data file
- */
-function buildDataUrl(env: Bindings, filePath: string): string {
-  return `${env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filePath}`;
-}
 
 /**
  * Validate tile coordinates from route parameters
@@ -125,8 +113,7 @@ app.use(
  */
 app.get('/tileset.json', async (c: Context) => {
   try {
-    const elevationUrl = buildDataUrl(c.env, ELEVATION_FILE);
-    const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);
+    const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(c.env.ELEVATION_DATA_URL);
 
     const tileset = createTileset(
       globalBounds,
@@ -174,19 +161,15 @@ app.get(
     const { level, x, y } = validation;
 
     try {
-      // Build data URLs
-      const elevationUrl = buildDataUrl(c.env, ELEVATION_FILE);
-      const textureUrl = buildDataUrl(c.env, TEXTURE_FILE);
-
       // Get tileset metadata
-      const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);
+      const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(c.env.ELEVATION_DATA_URL);
 
       // Calculate spatial bounds for this tile
       const tileBounds = calculateTileBounds(level, x, y, globalBounds);
 
       // Read elevation data and generate terrain mesh
       const { data: elevationData, bbox: elevationBbox } = 
-        await readElevationDataFromGeoTiff(elevationUrl, tileBounds, TILE_SIZE);
+        await readElevationDataFromGeoTiff(c.env.ELEVATION_DATA_URL, tileBounds, TILE_SIZE);
       
       const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
 
@@ -210,7 +193,7 @@ app.get(
       meshGeometry.normals = computeVertexNormals(meshGeometry.positions, triangleIndices.indices);
 
       // Read texture data for material
-      const texture = await readTextureDataFromGeoTiff(textureUrl, tileBounds, TILE_SIZE);
+      const texture = await readTextureDataFromGeoTiff(c.env.TEXTURE_DATA_URL, tileBounds, TILE_SIZE);
 
       // Generate GLB document
       const glbBuffer = await createGltfDocument(
