@@ -16,31 +16,128 @@ import { calculateTileBounds, createTileset } from '../services/tiles';
 import { Bindings } from '../index';
 import { memoize } from '../utils/memoize';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/** Tile resolution in pixels (grid will be TILE_SIZE + 1) */
 export const TILE_SIZE = 512;
+
+/** Maximum quadtree subdivision level for 3D Tiles */
 export const QUADTREE_MAX_LEVEL = 5;
+
+/** Swiss terrain minimum elevation in meters */
+const SWISS_MIN_ELEVATION = 0;
+
+/** Swiss terrain maximum elevation in meters */
+const SWISS_MAX_ELEVATION = 4500;
+
+/** Cache duration for tile responses in seconds */
+const TILE_CACHE_DURATION = 3600;
+
+/** Swiss elevation data file path */
+const SWISS_ELEVATION_FILE = 'swissalti3d/swissalti3d_web_mercator.tif';
+
+/** Swiss texture data file path */
+const SWISS_TEXTURE_FILE = 'swissimage-dop10/swissimage_web_mercator.tif';
+
+/** GLB content type for HTTP responses */
+const GLB_CONTENT_TYPE = 'model/gltf-binary';
+
+// ============================================================================
+// ROUTE SETUP
+// ============================================================================
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
+// Memoized metadata reader for performance optimization
 export const memoizedTiffMetadata = memoize(readGeoTiffMetadata);
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Build data URL from environment and file path
+ * 
+ * @param env - Environment bindings
+ * @param filePath - Path to the data file
+ * @returns Complete URL to the data file
+ */
+function buildDataUrl(env: Bindings, filePath: string): string {
+  return `${env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filePath}`;
+}
+
+/**
+ * Validate tile coordinates from route parameters
+ * 
+ * @param level - Quadtree level parameter
+ * @param x - Tile X coordinate parameter
+ * @param y - Tile Y coordinate parameter
+ * @returns Validation result with parsed coordinates or error
+ */
+function validateTileCoordinates(level: string, x: string, y: string): 
+  { valid: true; level: number; x: number; y: number } | 
+  { valid: false; error: string } {
+  
+  const parsedLevel = Number(level);
+  const parsedX = Number(x);
+  const parsedY = Number(y);
+
+  if (isNaN(parsedLevel) || isNaN(parsedX) || isNaN(parsedY)) {
+    return { valid: false, error: 'Invalid tile coordinates - must be numbers' };
+  }
+
+  if (parsedLevel < 0 || parsedLevel > QUADTREE_MAX_LEVEL) {
+    return { valid: false, error: `Invalid level - must be between 0 and ${QUADTREE_MAX_LEVEL}` };
+  }
+
+  if (parsedX < 0 || parsedY < 0) {
+    return { valid: false, error: 'Invalid coordinates - must be non-negative' };
+  }
+
+  return { valid: true, level: parsedLevel, x: parsedX, y: parsedY };
+}
+
+/**
+ * Create GLB response with proper headers
+ * 
+ * @param glbBuffer - Binary GLB data
+ * @param level - Tile level for filename
+ * @param x - Tile X coordinate for filename
+ * @param y - Tile Y coordinate for filename
+ * @returns HTTP Response with GLB data
+ */
+function createGlbResponse(glbBuffer: Uint8Array, level: number, x: number, y: number): Response {
+  return new Response(glbBuffer, {
+    headers: {
+      'Content-Type': GLB_CONTENT_TYPE,
+      'Content-Disposition': `attachment; filename="${level}-${x}-${y}.glb"`,
+    },
+  });
+}
+
+// ============================================================================
+// ROUTE HANDLERS
+// ============================================================================
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
+ * 
+ * Returns the root tileset.json file that defines the quadtree structure
+ * and spatial bounds for the 3D Tiles dataset. Clients use this to
+ * understand the tile hierarchy and begin loading terrain data.
  */
 glb.get('/tileset.json', async (c: Context) => {
   try {
-    const elevKey = 'swissalti3d/swissalti3d_web_mercator.tif';
-    const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
-
-    const { tilesetBounds: globalBounds, tilesetCenter: tilesetCenter } = await memoizedTiffMetadata(url);
-
-    const minH = 0;
-    const maxH = 4500; // Swiss terrain height range
+    const elevationUrl = buildDataUrl(c.env, SWISS_ELEVATION_FILE);
+    const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);
 
     const tileset = createTileset(
       globalBounds,
       tilesetCenter,
-      minH,
-      maxH,
+      SWISS_MIN_ELEVATION,
+      SWISS_MAX_ELEVATION,
       QUADTREE_MAX_LEVEL,
     );
 
@@ -53,41 +150,52 @@ glb.get('/tileset.json', async (c: Context) => {
 
 /**
  * GLB tile endpoint - generates individual terrain tiles
+ * 
+ * Processes elevation and texture data to generate a single 3D Tiles GLB file
+ * for the specified tile coordinates. The pipeline includes:
+ * 1. Coordinate validation and bounds calculation
+ * 2. Elevation data reading and mesh generation
+ * 3. Texture data reading and material creation
+ * 4. GLB assembly and response formatting
  */
 glb.get(
   '/tiles/:level/:x/:y/tile.glb',
   cache({
     cacheName: 'tiles',
-    cacheControl: 'max-age=3600',
+    cacheControl: `max-age=${TILE_CACHE_DURATION}`,
   }),
   async (c: Context) => {
-    const level = Number(c.req.param('level'));
-    const x = Number(c.req.param('x'));
-    const y = Number(c.req.param('y'));
+    // Validate and parse tile coordinates
+    const validation = validateTileCoordinates(
+      c.req.param('level'),
+      c.req.param('x'),
+      c.req.param('y')
+    );
 
-    if (isNaN(level) || isNaN(x) || isNaN(y)) {
-      return c.json({ error: 'Invalid tile coordinates' }, 400);
+    if (!validation.valid) {
+      return c.json({ error: validation.error }, 400);
     }
 
-    const elevationFile = 'swissalti3d/swissalti3d_web_mercator.tif';
-    const textureFile = 'swissimage-dop10/swissimage_web_mercator.tif';
-    const elevationURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevationFile}`;
-    const textureURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${textureFile}`;
-
-    const { tilesetBounds: globalBounds, tilesetCenter: tilesetCenter } = await memoizedTiffMetadata(elevationURL);
+    const { level, x, y } = validation;
 
     try {
-      // 1. Calculate tile bounds
+      // Build data URLs
+      const elevationUrl = buildDataUrl(c.env, SWISS_ELEVATION_FILE);
+      const textureUrl = buildDataUrl(c.env, SWISS_TEXTURE_FILE);
+
+      // Get tileset metadata
+      const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);
+
+      // Calculate spatial bounds for this tile
       const tileBounds = calculateTileBounds(level, x, y, globalBounds);
 
-      // 2. Read elevation data
-      const { data: elevationData, bbox: elevationBbox } =
-        await readElevationDataFromGeoTiff(elevationURL, tileBounds, TILE_SIZE);
-
-      // 3. Generate terrain mesh
+      // Read elevation data and generate terrain mesh
+      const { data: elevationData, bbox: elevationBbox } = 
+        await readElevationDataFromGeoTiff(elevationUrl, tileBounds, TILE_SIZE);
+      
       const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
 
-      // 4. Map coordinates to 3D positions
+      // Transform grid coordinates to 3D world positions
       const meshGeometry = mapCoordinates(
         terrainMesh.vertices,
         terrainMesh.terrainGrid,
@@ -96,27 +204,20 @@ glb.get(
         TILE_SIZE,
       );
 
-      // 5. Build triangle indices
-      const triangleIndices = buildTriangleIndices(
-        terrainMesh.triangles,
-        meshGeometry.vertexMap,
-      );
-
-      // Compute normals and add to meshGeometry
-      meshGeometry.normals = computeVertexNormals(
-        meshGeometry.positions,
-        triangleIndices.indices,
-      );
-
+      // Build triangle indices and compute vertex normals
+      const triangleIndices = buildTriangleIndices(terrainMesh.triangles, meshGeometry.vertexMap);
+      
       if (!triangleIndices.indices.length) {
         console.error('No valid triangles generated for tile', { level, x, y });
-        return c.json({ error: 'Tile void' }, 404);
+        return c.json({ error: 'Tile contains no valid geometry' }, 404);
       }
 
-      // 6. Generate optional texture
-      const texture = await readTextureDataFromGeoTiff(textureURL, tileBounds, TILE_SIZE);
+      meshGeometry.normals = computeVertexNormals(meshGeometry.positions, triangleIndices.indices);
 
-      // 7. Build glTF document
+      // Read texture data for material
+      const texture = await readTextureDataFromGeoTiff(textureUrl, tileBounds, TILE_SIZE);
+
+      // Generate GLB document
       const glbBuffer = await createGltfDocument(
         meshGeometry.positions,
         meshGeometry.uvs,
@@ -125,14 +226,10 @@ glb.get(
         texture,
       );
 
-      return new Response(glbBuffer, {
-        headers: {
-          'Content-Type': 'model/gltf-binary',
-          'Content-Disposition': `attachment; filename="${level}-${x}-${y}.glb"`,
-        },
-      });
+      return createGlbResponse(glbBuffer, level, x, y);
+
     } catch (err) {
-      console.error('Failed to generate GLB tile:', err);
+      console.error('Failed to generate GLB tile:', { level, x, y, error: err });
       return c.json({ error: 'Failed to generate tile' }, 500);
     }
   },
