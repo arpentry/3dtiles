@@ -8,7 +8,7 @@ import { TileBounds } from './tiles';
 // ============================================================================
 
 /** Default no-data value for elevation rasters */
-const ELEVATION_NO_DATA = -9999;
+export const ELEVATION_NO_DATA = -9999;
 
 /** Default resampling method for texture data */
 const DEFAULT_RESAMPLE_METHOD = 'bilinear' as const;
