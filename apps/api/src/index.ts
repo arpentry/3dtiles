@@ -21,8 +21,8 @@ import {
   SWISS_MIN_ELEVATION,
   SWISS_MAX_ELEVATION,
   TILE_CACHE_DURATION,
-  SWISS_ELEVATION_FILE,
-  SWISS_TEXTURE_FILE,
+  ELEVATION_FILE,
+  TEXTURE_FILE,
   GLB_CONTENT_TYPE,
 } from './constants';
 
@@ -125,7 +125,7 @@ app.use(
  */
 app.get('/tileset.json', async (c: Context) => {
   try {
-    const elevationUrl = buildDataUrl(c.env, SWISS_ELEVATION_FILE);
+    const elevationUrl = buildDataUrl(c.env, ELEVATION_FILE);
     const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);
 
     const tileset = createTileset(
@@ -175,8 +175,8 @@ app.get(
 
     try {
       // Build data URLs
-      const elevationUrl = buildDataUrl(c.env, SWISS_ELEVATION_FILE);
-      const textureUrl = buildDataUrl(c.env, SWISS_TEXTURE_FILE);
+      const elevationUrl = buildDataUrl(c.env, ELEVATION_FILE);
+      const textureUrl = buildDataUrl(c.env, TEXTURE_FILE);
 
       // Get tileset metadata
       const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(elevationUrl);

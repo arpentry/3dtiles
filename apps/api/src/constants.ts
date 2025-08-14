@@ -145,7 +145,7 @@ export const QUAD_MULTIPLIER = 2;
 // ============================================================================
 
 /** Swiss elevation data file path */
-export const SWISS_ELEVATION_FILE = 'swissalti3d/swissalti3d_web_mercator.tif';
+export const ELEVATION_FILE = 'swissalti3d/swissalti3d_web_mercator.tif';
 
 /** Swiss texture data file path */
-export const SWISS_TEXTURE_FILE = 'swissimage-dop10/swissimage_web_mercator.tif';
+export const TEXTURE_FILE = 'swissimage-dop10/swissimage_web_mercator.tif';
