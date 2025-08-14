@@ -1,6 +1,16 @@
-import { tileToRegionSquare } from '../utils/geometry';
+import { Bounds, tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
-import { TileBounds } from './raster';
+
+export interface TileBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  westDeg: number;
+  southDeg: number;
+  eastDeg: number;
+  northDeg: number;
+}
 
 export interface TileCoordinates {
   level: number;
@@ -15,7 +25,7 @@ export function calculateTileBounds(
   level: number,
   x: number,
   y: number,
-  globalBounds: [number, number, number, number],
+  globalBounds: Bounds,
 ): TileBounds {
   const regionRad = tileToRegionSquare(globalBounds, level, x, y);
   const westDeg = (regionRad.west * 180) / Math.PI;

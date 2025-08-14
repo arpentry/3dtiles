@@ -1,13 +1,19 @@
 import { WGS84toEPSG3857, EPSG3857toWGS84, degToRad } from './projections';
 
-/** A geographic bounding region as used by 3D Tiles 1.1 (radians + metres). */
+/** Web Mercator bounds as [minX, minY, maxX, maxY] */
+export type Bounds = [number, number, number, number];
+
+/** A coordinate pair [x, y] */
+export type Coordinate = [number, number];
+
+/** A geographic bounding region as used by 3D Tiles 1.1 (radians + meters). */
 export interface BoundingRegion {
   west: number; // longitude,  radians
   south: number; // latitude,   radians
   east: number; // longitude,  radians
   north: number; // latitude,   radians
-  minH: number; // metres
-  maxH: number; // metres
+  minH: number; // meters
+  maxH: number; // meters
 }
 
 /**

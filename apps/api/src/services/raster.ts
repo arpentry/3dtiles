@@ -1,21 +1,7 @@
 import { fromUrl } from 'geotiff';
 import { encode } from '@cf-wasm/png';
-import { createSquareBounds } from '../utils/geometry';
-
-export interface TileBounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  westDeg: number;
-  southDeg: number;
-  eastDeg: number;
-  northDeg: number;
-}
-
-// Web Mercator bounds as [minX, minY, maxX, maxY]
-export type Bounds = [number, number, number, number];
-export type Coordinate = [number, number];
+import { createSquareBounds, Bounds, Coordinate } from '../utils/geometry';
+import { TileBounds } from './tiles';
 
 export interface ElevationRaster {
   data: TypedArray;

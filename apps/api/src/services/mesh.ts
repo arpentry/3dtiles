@@ -1,6 +1,6 @@
 // @ts-ignore – no types
 import Martini from '@mapbox/martini';
-import { TileBounds } from './raster';
+import { TileBounds } from './tiles';
 
 const ELEV_NO_DATA = -9999;
 
