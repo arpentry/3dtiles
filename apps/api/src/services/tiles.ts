@@ -11,14 +11,11 @@ const TILES_VERSION = '1.1';
 /** Default coordinate system up-axis for terrain */
 const DEFAULT_UP_AXIS = 'Z' as const;
 
-/** Root-level geometric error threshold */
-const ROOT_GEOMETRIC_ERROR = 5000;
+/** Elevation-based geometric error scaling factor (2% of elevation range) */
+const ELEVATION_ERROR_FACTOR = 0.02;
 
 /** Minimum geometric error for leaf tiles */
-const MIN_GEOMETRIC_ERROR = 50;
-
-/** Base geometric error divisor for level calculation */
-const GEOMETRIC_ERROR_DIVISOR = 2000;
+const MIN_GEOMETRIC_ERROR = 1;
 
 /** Quadtree subdivision multiplier */
 const QUAD_MULTIPLIER = 2;
@@ -127,16 +124,19 @@ export interface Tileset {
 // ============================================================================
 
 /**
- * Calculate geometric error for a given quadtree level
+ * Calculate geometric error for a given quadtree level using elevation-based approach
+ *
+ * This function implements terrain-appropriate geometric error calculation that considers
+ * elevation characteristics rather than generic 3D object dimensions. For terrain data,
+ * the primary geometric variation is elevation change, not horizontal positioning.
  * 
  * @param level - Quadtree level (0 = root)
+ * @param elevationRange - Total elevation range (maxHeight - minHeight) in meters
  * @returns Geometric error threshold for screen-space error calculations
  */
-function calculateGeometricError(level: number): number {
-  if (level === 0) {
-    return ROOT_GEOMETRIC_ERROR;
-  }
-  return Math.max(MIN_GEOMETRIC_ERROR, GEOMETRIC_ERROR_DIVISOR / Math.pow(QUAD_MULTIPLIER, level));
+function calculateGeometricError(level: number, elevationRange: number): number {
+  const rootError = elevationRange * ELEVATION_ERROR_FACTOR;
+  return Math.max(MIN_GEOMETRIC_ERROR, rootError / Math.pow(QUAD_MULTIPLIER, level));
 }
 
 /**
@@ -233,10 +233,10 @@ function createTile(
 
 /**
  * Create a quadtree of 3D Tiles with recursive subdivision
- * 
+ *
  * This function implements the core quadtree subdivision logic for 3D Tiles,
  * recursively creating child tiles until the maximum level is reached.
- * 
+ *
  * @param level - Current quadtree level (0 = root)
  * @param quadrant - Quadrant bounds and tile coordinates
  * @param minHeight - Minimum terrain height (meters)
@@ -255,7 +255,8 @@ function createQuadtree(
   centerY: number,
   maxLevel: number,
 ): Tile {
-  const geometricError = calculateGeometricError(level);
+  const elevationRange = maxHeight - minHeight;
+  const geometricError = calculateGeometricError(level, elevationRange);
   const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
   
   // Create children if we haven't reached max level
@@ -374,12 +375,14 @@ export function createTileset(
     maxY: bounds[3],
   };
 
+  const elevationRange = maxHeight - minHeight;
+
   return {
     asset: {
       version: TILES_VERSION,
       gltfUpAxis: DEFAULT_UP_AXIS,
     },
-    geometricError: ROOT_GEOMETRIC_ERROR,
+    geometricError: calculateGeometricError(0, elevationRange),
     root: createQuadtree(
       0, // level (root)
       rootQuadrant,

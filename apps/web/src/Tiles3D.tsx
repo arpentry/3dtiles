@@ -33,7 +33,7 @@ export default function Tiles3D({ url }: { url: string }) {
   const { errorTarget, maxDepth, displayActiveTiles } = useControls(
     '3D Tiles - Settings',
     {
-      errorTarget: { value: 50, min: 1, max: 200, step: 1 },
+      errorTarget: { value: 4, min: 1, max: 20, step: 1 },
       maxDepth: { value: 10, min: 1, max: 20, step: 1 },
       displayActiveTiles: true,
     },
