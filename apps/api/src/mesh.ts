@@ -6,7 +6,7 @@ import {
   VERTEX_COMPONENTS_3D,
   TRIANGLE_VERTICES,
   VERTEX_COMPONENTS_2D,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

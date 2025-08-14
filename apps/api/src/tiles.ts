@@ -1,12 +1,12 @@
-import { Bounds, Coordinate, tileToRegionSquare } from '../utils/geometry';
-import { WGS84toEPSG3857 } from '../utils/projections';
+import { Bounds, Coordinate, tileToRegionSquare } from './geometry';
+import { WGS84toEPSG3857 } from './projections';
 import {
   TILES_VERSION,
   DEFAULT_UP_AXIS,
   ELEVATION_ERROR_FACTOR,
   MIN_GEOMETRIC_ERROR,
   QUAD_MULTIPLIER,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

@@ -7,7 +7,7 @@ import {
   WGS84_PROJ_DEF,
   LV95_PROJ_DEF,
   WEB_MERCATOR_PROJ_DEF,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // PROJECTION SYSTEM SETUP

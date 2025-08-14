@@ -5,7 +5,7 @@ import {
   DEFAULT_METALLIC_FACTOR,
   INDEX_16BIT_LIMIT,
   PNG_MIME_TYPE,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

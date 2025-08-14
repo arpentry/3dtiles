@@ -1,13 +1,13 @@
 import { fromUrl } from 'geotiff';
 import { encode } from '@cf-wasm/png';
-import { createSquareBounds, Bounds, Coordinate } from '../utils/geometry';
+import { createSquareBounds, Bounds, Coordinate } from './geometry';
 import { TileBounds } from './tiles';
 import {
   ELEVATION_NO_DATA,
   DEFAULT_RESAMPLE_METHOD,
   ALPHA_OPAQUE,
   RGBA_CHANNELS,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

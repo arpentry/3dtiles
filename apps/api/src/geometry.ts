@@ -3,7 +3,7 @@ import {
   DEFAULT_MAX_HEIGHT,
   DEFAULT_MIN_HEIGHT,
   SWITZERLAND_WGS84_BOUNDS,
-} from '../constants';
+} from './constants';
 
 // ============================================================================
 // TYPE DEFINITIONS
