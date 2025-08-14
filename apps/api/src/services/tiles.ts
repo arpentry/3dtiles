@@ -1,4 +1,4 @@
-import { Bounds, tileToRegionSquare } from '../utils/geometry';
+import { Bounds, Coordinate, tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
 
 export interface TileBounds {
@@ -16,6 +16,174 @@ export interface TileCoordinates {
   level: number;
   x: number;
   y: number;
+}
+
+/** 3D Tiles bounding volume using oriented bounding box */
+export interface BoundingVolume {
+  /** 12-element array defining center and half-axes of oriented bounding box */
+  box: [
+    number, number, number, // center (x, y, z)
+    number, number, number, // x-axis half-extents (x, y, z)
+    number, number, number, // y-axis half-extents (x, y, z) 
+    number, number, number  // z-axis half-extents (x, y, z)
+  ];
+}
+
+/** 3D Tiles tile content reference */
+export interface TileContent {
+  /** URI to the tile's content (GLB file) */
+  uri: string;
+}
+
+/** 3D Tiles tile object */
+export interface Tile {
+  /** Bounding volume that encloses the tile */
+  boundingVolume: BoundingVolume;
+  /** Refinement strategy - typically 'REPLACE' for terrain */
+  refine: 'REPLACE' | 'ADD';
+  /** Screen-space error threshold for this tile */
+  geometricError: number;
+  /** Reference to tile content */
+  content: TileContent;
+  /** Child tiles in the quadtree */
+  children: Tile[];
+}
+
+/** 3D Tiles asset metadata */
+export interface TilesetAsset {
+  /** 3D Tiles specification version */
+  version: string;
+  /** Coordinate system up-axis */
+  gltfUpAxis?: 'Y' | 'Z';
+}
+
+/** Complete 3D Tiles tileset */
+export interface Tileset {
+  /** Asset metadata */
+  asset: TilesetAsset;
+  /** Root-level geometric error threshold */
+  geometricError: number;
+  /** Root tile of the tileset */
+  root: Tile;
+}
+
+/**
+ * Create a 3D Tiles tile with bounding volume and content
+ */
+function createTile(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  minHeight: number,
+  maxHeight: number,
+  centerX: number,
+  centerY: number,
+  geometricError: number,
+  contentUri: string,
+  children: Tile[] = [],
+): Tile {
+  // Calculate bounding box center (relative to tileset center)
+  const boxCenterX = (minX + maxX) / 2 - centerX; // X = easting (centered)
+  const boxCenterY = (minHeight + maxHeight) / 2; // Y = elevation
+  const boxCenterZ = -((minY + maxY) / 2 - centerY); // Z = southing (centered)
+
+  // Calculate bounding box dimensions
+  const boxWidth = maxX - minX; // X extent (easting)
+  const boxHeight = maxHeight - minHeight; // Y extent (elevation)
+  const boxDepth = maxY - minY; // Z extent (northing)
+
+  return {
+    boundingVolume: {
+      box: [
+        boxCenterX,
+        boxCenterY,
+        boxCenterZ, // center
+        boxWidth / 2,
+        0,
+        0, // X axis half-extents (easting)
+        0,
+        boxHeight / 2,
+        0, // Y axis half-extents (elevation)
+        0,
+        0,
+        boxDepth / 2, // Z axis half-extents (northing)
+      ],
+    },
+    refine: 'REPLACE',
+    geometricError,
+    content: { uri: contentUri },
+    children,
+  };
+}
+
+/**
+ * Create a 3D Tiles tile recursively with its children
+ */
+function createTileRecursive(
+  level: number,
+  x: number,
+  y: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  minHeight: number,
+  maxHeight: number,
+  centerX: number,
+  centerY: number,
+  maxLevel: number,
+): Tile {
+  // Calculate geometric error based on level
+  const geometricError = level === 0 ? 5000 : Math.max(50, 2000 / Math.pow(2, level));
+  const contentUri = `/tiles/${level}/${x}/${y}/tile.glb`;
+  
+  // Create children if we haven't reached max level
+  const children: Tile[] = [];
+  if (level < maxLevel) {
+    const childLevel = level + 1;
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    const quads = [
+      { x: x * 2, y: y * 2, minX, minY, maxX: midX, maxY: midY }, // SW
+      { x: x * 2 + 1, y: y * 2, minX: midX, minY, maxX, maxY: midY }, // SE
+      { x: x * 2, y: y * 2 + 1, minX, minY: midY, maxX: midX, maxY }, // NW
+      { x: x * 2 + 1, y: y * 2 + 1, minX: midX, minY: midY, maxX, maxY }, // NE
+    ];
+
+    for (const q of quads) {
+      const childTile = createTileRecursive(
+        childLevel,
+        q.x,
+        q.y,
+        q.minX,
+        q.minY,
+        q.maxX,
+        q.maxY,
+        minHeight,
+        maxHeight,
+        centerX,
+        centerY,
+        maxLevel,
+      );
+      children.push(childTile);
+    }
+  }
+
+  return createTile(
+    minX,
+    minY,
+    maxX,
+    maxY,
+    minHeight,
+    maxHeight,
+    centerX,
+    centerY,
+    geometricError,
+    contentUri,
+    children,
+  );
 }
 
 /**
@@ -49,139 +217,33 @@ export function calculateTileBounds(
 }
 
 /**
- * Create tile children for 3D Tiles quadtree structure
+ * Create a tileset for a given bounds and center
  */
-export function createTileChildren(
-  level: number,
-  x: number,
-  y: number,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
+export function createTileset(
+  bounds: Bounds,
+  center: Coordinate,
   minHeight: number,
   maxHeight: number,
-  centerX: number,
-  centerY: number,
   maxLevel: number,
-): Array<any> {
-  if (level >= maxLevel) return [];
-
-  const children: Array<any> = [];
-  const childLevel = level + 1;
-  const midX = (minX + maxX) / 2;
-  const midY = (minY + maxY) / 2;
-
-  const quads = [
-    { x: x * 2, y: y * 2, minX, minY, maxX: midX, maxY: midY }, // SW
-    { x: x * 2 + 1, y: y * 2, minX: midX, minY, maxX, maxY: midY }, // SE
-    { x: x * 2, y: y * 2 + 1, minX, minY: midY, maxX: midX, maxY }, // NW
-    { x: x * 2 + 1, y: y * 2 + 1, minX: midX, minY: midY, maxX, maxY }, // NE
-  ];
-
-  for (const q of quads) {
-    const geometricError = Math.max(50, 2000 / Math.pow(2, childLevel));
-
-    // Natural bounding box calculation - no rotation
-    const boxCenterX = (q.minX + q.maxX) / 2 - centerX; // X = easting (centered)
-    const boxCenterY = (minHeight + maxHeight) / 2; // Y = elevation
-    const boxCenterZ = -((q.minY + q.maxY) / 2 - centerY); // Z = southing (centered)
-
-    const boxWidth = q.maxX - q.minX; // X extent (easting)
-    const boxHeight = maxHeight - minHeight; // Y extent (elevation)
-    const boxDepth = q.maxY - q.minY; // Z extent (northing) // TODO : check if needs to be flipped (like boxCenterZ)
-
-    children.push({
-      boundingVolume: {
-        box: [
-          boxCenterX,
-          boxCenterY,
-          boxCenterZ, // center
-          boxWidth / 2,
-          0,
-          0, // X axis half-extents (easting)
-          0,
-          boxHeight / 2,
-          0, // Y axis half-extents (elevation)
-          0,
-          0,
-          boxDepth / 2, // Z axis half-extents (northing)
-        ],
-      },
-      refine: 'REPLACE',
-      geometricError,
-      content: { uri: `/tiles/${childLevel}/${q.x}/${q.y}/tile.glb` },
-      children: createTileChildren(
-        childLevel,
-        q.x,
-        q.y,
-        q.minX,
-        q.minY,
-        q.maxX,
-        q.maxY,
-        minHeight,
-        maxHeight,
-        centerX,
-        centerY,
-        maxLevel,
-      ),
-    });
-  }
-
-  return children;
-}
-
-/**
- * Create 3D Tiles root tile
- */
-export function createRootTile(
-  square: [number, number, number, number],
-  center: [number, number],
-  minH: number,
-  maxH: number,
-  maxLevel: number,
-) {
-  // Natural root bounding box calculation
-  const rootBoxCenterX = 0; // X = easting (centered at origin)
-  const rootBoxCenterY = (minH + maxH) / 2; // Y = elevation center
-  const rootBoxCenterZ = 0; // Z = northing (centered at origin)
-
-  const rootBoxWidth = square[2] - square[0]; // X extent (easting)
-  const rootBoxHeight = maxH - minH; // Y extent (elevation)
-  const rootBoxDepth = square[3] - square[1]; // Z extent (northing)
-
+): Tileset {
   return {
-    boundingVolume: {
-      box: [
-        rootBoxCenterX,
-        rootBoxCenterY,
-        rootBoxCenterZ, // center
-        rootBoxWidth / 2,
-        0,
-        0, // X axis half-extents (easting)
-        0,
-        rootBoxHeight / 2,
-        0, // Y axis half-extents (elevation)
-        0,
-        0,
-        rootBoxDepth / 2, // Z axis half-extents (northing)
-      ],
+    asset: {
+      version: '1.1',
+      gltfUpAxis: 'Z',
     },
-    refine: 'REPLACE',
     geometricError: 5000,
-    content: { uri: '/tiles/0/0/0/tile.glb' },
-    children: createTileChildren(
-      0,
-      0,
-      0,
-      square[0],
-      square[1],
-      square[2],
-      square[3],
-      minH,
-      maxH,
-      center[0],
-      center[1],
+    root: createTileRecursive(
+      0, // level
+      0, // x
+      0, // y
+      bounds[0], // minX
+      bounds[1], // minY
+      bounds[2], // maxX
+      bounds[3], // maxY
+      minHeight,
+      maxHeight,
+      center[0], // centerX
+      center[1], // centerY
       maxLevel,
     ),
   };

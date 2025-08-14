@@ -12,7 +12,7 @@ import {
   computeVertexNormals,
 } from '../services/mesh';
 import { createGltfDocument } from '../services/gltf';
-import { calculateTileBounds, createRootTile } from '../services/tiles';
+import { calculateTileBounds, createTileset } from '../services/tiles';
 import { Bindings } from '../index';
 import { memoize } from '../utils/memoize';
 
@@ -47,7 +47,7 @@ glb.get('/tileset.json', async (c: Context) => {
       },
     });
 
-    const root = createRootTile(
+    const tileset = createTileset(
       globalBounds,
       tilesetCenter,
       minH,
@@ -55,11 +55,7 @@ glb.get('/tileset.json', async (c: Context) => {
       QUADTREE_MAX_LEVEL,
     );
 
-    return c.json({
-      asset: { version: '1.1', gltfUpAxis: 'Z' },
-      geometricError: 5000,
-      root,
-    });
+    return c.json(tileset);
   } catch (err) {
     console.error('Tileset error:', err);
     return c.json({ error: 'Failed to build tileset' }, 500);
