@@ -1,21 +1,76 @@
 import { Bounds, Coordinate, tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/** Default 3D Tiles specification version */
+const TILES_VERSION = '1.1';
+
+/** Default coordinate system up-axis for terrain */
+const DEFAULT_UP_AXIS = 'Z' as const;
+
+/** Root-level geometric error threshold */
+const ROOT_GEOMETRIC_ERROR = 5000;
+
+/** Minimum geometric error for leaf tiles */
+const MIN_GEOMETRIC_ERROR = 50;
+
+/** Base geometric error divisor for level calculation */
+const GEOMETRIC_ERROR_DIVISOR = 2000;
+
+/** Quadtree subdivision multiplier */
+const QUAD_MULTIPLIER = 2;
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/** Tile bounds in both Web Mercator and geographic coordinates */
 export interface TileBounds {
+  /** Web Mercator minimum X (easting) */
   minX: number;
+  /** Web Mercator minimum Y (northing) */
   minY: number;
+  /** Web Mercator maximum X (easting) */
   maxX: number;
+  /** Web Mercator maximum Y (northing) */
   maxY: number;
+  /** Geographic west longitude in degrees */
   westDeg: number;
+  /** Geographic south latitude in degrees */
   southDeg: number;
+  /** Geographic east longitude in degrees */
   eastDeg: number;
+  /** Geographic north latitude in degrees */
   northDeg: number;
 }
 
+/** Quadtree tile coordinates */
 export interface TileCoordinates {
+  /** Zoom level (0 = root) */
   level: number;
+  /** Tile column index */
   x: number;
+  /** Tile row index */
   y: number;
+}
+
+/** Quadrant definition for quadtree subdivision */
+interface Quadrant {
+  /** Child tile column index */
+  x: number;
+  /** Child tile row index */
+  y: number;
+  /** Quadrant minimum X bound (Web Mercator) */
+  minX: number;
+  /** Quadrant minimum Y bound (Web Mercator) */
+  minY: number;
+  /** Quadrant maximum X bound (Web Mercator) */
+  maxX: number;
+  /** Quadrant maximum Y bound (Web Mercator) */
+  maxY: number;
 }
 
 /** 3D Tiles bounding volume using oriented bounding box */
@@ -65,6 +120,65 @@ export interface Tileset {
   geometricError: number;
   /** Root tile of the tileset */
   root: Tile;
+}
+
+// ============================================================================
+// PRIVATE HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Calculate geometric error for a given quadtree level
+ * 
+ * @param level - Quadtree level (0 = root)
+ * @returns Geometric error threshold for screen-space error calculations
+ */
+function calculateGeometricError(level: number): number {
+  if (level === 0) {
+    return ROOT_GEOMETRIC_ERROR;
+  }
+  return Math.max(MIN_GEOMETRIC_ERROR, GEOMETRIC_ERROR_DIVISOR / Math.pow(QUAD_MULTIPLIER, level));
+}
+
+/**
+ * Generate content URI for a tile at given coordinates
+ * 
+ * @param level - Quadtree level
+ * @param x - Tile column index  
+ * @param y - Tile row index
+ * @returns URI path to the tile's GLB content
+ */
+function generateContentUri(level: number, x: number, y: number): string {
+  return `/tiles/${level}/${x}/${y}/tile.glb`;
+}
+
+/**
+ * Create quadrant subdivision data for a tile
+ * 
+ * @param x - Parent tile column index
+ * @param y - Parent tile row index  
+ * @param minX - Parent tile minimum X bound
+ * @param minY - Parent tile minimum Y bound
+ * @param maxX - Parent tile maximum X bound
+ * @param maxY - Parent tile maximum Y bound
+ * @returns Array of 4 quadrant definitions (SW, SE, NW, NE)
+ */
+function createQuadrants(
+  x: number,
+  y: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+): Quadrant[] {
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+  
+  return [
+    { x: x * QUAD_MULTIPLIER, y: y * QUAD_MULTIPLIER, minX, minY, maxX: midX, maxY: midY }, // SW
+    { x: x * QUAD_MULTIPLIER + 1, y: y * QUAD_MULTIPLIER, minX: midX, minY, maxX, maxY: midY }, // SE
+    { x: x * QUAD_MULTIPLIER, y: y * QUAD_MULTIPLIER + 1, minX, minY: midY, maxX: midX, maxY }, // NW
+    { x: x * QUAD_MULTIPLIER + 1, y: y * QUAD_MULTIPLIER + 1, minX: midX, minY: midY, maxX, maxY }, // NE
+  ];
 }
 
 /**
@@ -118,49 +232,49 @@ function createTile(
 }
 
 /**
- * Create a 3D Tiles tile recursively with its children
+ * Create a quadtree of 3D Tiles with recursive subdivision
+ * 
+ * This function implements the core quadtree subdivision logic for 3D Tiles,
+ * recursively creating child tiles until the maximum level is reached.
+ * 
+ * @param level - Current quadtree level (0 = root)
+ * @param quadrant - Quadrant bounds and tile coordinates
+ * @param minHeight - Minimum terrain height (meters)
+ * @param maxHeight - Maximum terrain height (meters)
+ * @param centerX - Tileset center X coordinate (Web Mercator)
+ * @param centerY - Tileset center Y coordinate (Web Mercator)
+ * @param maxLevel - Maximum subdivision level
+ * @returns Complete quadtree tile with children (if not at max level)
  */
-function createTileRecursive(
+function createQuadtree(
   level: number,
-  x: number,
-  y: number,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
+  quadrant: Quadrant,
   minHeight: number,
   maxHeight: number,
   centerX: number,
   centerY: number,
   maxLevel: number,
 ): Tile {
-  // Calculate geometric error based on level
-  const geometricError = level === 0 ? 5000 : Math.max(50, 2000 / Math.pow(2, level));
-  const contentUri = `/tiles/${level}/${x}/${y}/tile.glb`;
+  const geometricError = calculateGeometricError(level);
+  const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
   
   // Create children if we haven't reached max level
   const children: Tile[] = [];
   if (level < maxLevel) {
     const childLevel = level + 1;
-    const midX = (minX + maxX) / 2;
-    const midY = (minY + maxY) / 2;
+    const childQuadrants = createQuadrants(
+      quadrant.x, 
+      quadrant.y, 
+      quadrant.minX, 
+      quadrant.minY, 
+      quadrant.maxX, 
+      quadrant.maxY
+    );
 
-    const quads = [
-      { x: x * 2, y: y * 2, minX, minY, maxX: midX, maxY: midY }, // SW
-      { x: x * 2 + 1, y: y * 2, minX: midX, minY, maxX, maxY: midY }, // SE
-      { x: x * 2, y: y * 2 + 1, minX, minY: midY, maxX: midX, maxY }, // NW
-      { x: x * 2 + 1, y: y * 2 + 1, minX: midX, minY: midY, maxX, maxY }, // NE
-    ];
-
-    for (const q of quads) {
-      const childTile = createTileRecursive(
+    for (const childQuadrant of childQuadrants) {
+      const childTile = createQuadtree(
         childLevel,
-        q.x,
-        q.y,
-        q.minX,
-        q.minY,
-        q.maxX,
-        q.maxY,
+        childQuadrant,
         minHeight,
         maxHeight,
         centerX,
@@ -172,10 +286,10 @@ function createTileRecursive(
   }
 
   return createTile(
-    minX,
-    minY,
-    maxX,
-    maxY,
+    quadrant.minX,
+    quadrant.minY,
+    quadrant.maxX,
+    quadrant.maxY,
     minHeight,
     maxHeight,
     centerX,
@@ -186,8 +300,21 @@ function createTileRecursive(
   );
 }
 
+// ============================================================================
+// PUBLIC API FUNCTIONS
+// ============================================================================
+
 /**
  * Calculate tile bounds in both geographic and Web Mercator coordinates
+ * 
+ * Converts from quadtree tile coordinates to both geographic (degrees) and 
+ * Web Mercator (meters) coordinate systems for raster data processing.
+ * 
+ * @param level - Quadtree zoom level
+ * @param x - Tile column index
+ * @param y - Tile row index  
+ * @param globalBounds - Overall tileset bounds in Web Mercator
+ * @returns Bounds in both coordinate systems
  */
 export function calculateTileBounds(
   level: number,
@@ -217,7 +344,19 @@ export function calculateTileBounds(
 }
 
 /**
- * Create a tileset for a given bounds and center
+ * Create a complete 3D Tiles tileset with recursive quadtree structure
+ * 
+ * This is the main entry point for creating a 3D Tiles tileset. It generates
+ * a complete quadtree structure up to the specified maximum level, with proper
+ * 3D Tiles metadata and geometric error calculations.
+ * 
+ * @param bounds - Tileset spatial bounds in Web Mercator [minX, minY, maxX, maxY]
+ * @param center - Tileset center point in Web Mercator [x, y]
+ * @param minHeight - Minimum terrain elevation in meters
+ * @param maxHeight - Maximum terrain elevation in meters  
+ * @param maxLevel - Maximum quadtree subdivision level (0 = root only)
+ * @returns Complete 3D Tiles tileset ready for JSON serialization
+ * ```
  */
 export function createTileset(
   bounds: Bounds,
@@ -226,20 +365,24 @@ export function createTileset(
   maxHeight: number,
   maxLevel: number,
 ): Tileset {
+  const rootQuadrant: Quadrant = {
+    x: 0,
+    y: 0,
+    minX: bounds[0],
+    minY: bounds[1],
+    maxX: bounds[2],
+    maxY: bounds[3],
+  };
+
   return {
     asset: {
-      version: '1.1',
-      gltfUpAxis: 'Z',
+      version: TILES_VERSION,
+      gltfUpAxis: DEFAULT_UP_AXIS,
     },
-    geometricError: 5000,
-    root: createTileRecursive(
-      0, // level
-      0, // x
-      0, // y
-      bounds[0], // minX
-      bounds[1], // minY
-      bounds[2], // maxX
-      bounds[3], // maxY
+    geometricError: ROOT_GEOMETRIC_ERROR,
+    root: createQuadtree(
+      0, // level (root)
+      rootQuadrant,
       minHeight,
       maxHeight,
       center[0], // centerX
