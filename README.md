@@ -39,20 +39,42 @@ sudo apt install curl jq gdal-bin awscli
 
 ### Environment Variables
 
-#### For API (Cloudflare R2)
+#### For API (Cloudflare Worker)
 
-Create `apps/api/.dev.vars` for local development:
+The API uses the following environment variables configured in `apps/api/wrangler.json`:
 
-```bash
-R2_PUBLIC_ARPENTRY_ENDPOINT=https://pub-your_public_r2_bucket_endpoint.r2.dev
+```json
+{
+  "vars": {
+    "ELEVATION_DATA_URL": "https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissalti3d/swissalti3d_web_mercator.tif",
+    "TEXTURE_DATA_URL": "https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissimage-dop10/swissimage_web_mercator.tif"
+  }
+}
 ```
 
-#### For Web App
-
-Create `apps/web/.env`:
+For local development, create `apps/api/.dev.vars`:
 
 ```bash
-VITE_TILES_URL=http://localhost:8787
+ELEVATION_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissalti3d/swissalti3d_web_mercator.tif
+TEXTURE_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissimage-dop10/swissimage_web_mercator.tif
+```
+
+#### For Web App (Cloudflare Pages)
+
+The web app uses the following environment variable configured in `apps/web/wrangler.json`:
+
+```json
+{
+  "vars": {
+    "VITE_TILESET_URL": "https://3dtiles-api.arpentry.com/tileset.json"
+  }
+}
+```
+
+For local development, create `apps/web/.env`:
+
+```bash
+VITE_TILESET_URL=http://localhost:8787
 ```
 
 #### For R2 Upload (Optional)
