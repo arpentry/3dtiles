@@ -55,20 +55,14 @@ export const WEB_MERCATOR_PROJ_DEF = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0
 // GEOGRAPHIC BOUNDS CONSTANTS
 // ============================================================================
 
-/** Default maximum height for 3D Tiles bounding regions in meters */
-export const DEFAULT_MAX_HEIGHT = 5000;
+/** Swiss terrain minimum elevation in meters */
+export const MIN_ELEVATION = -10000;
 
-/** Default minimum height for 3D Tiles bounding regions in meters */
-export const DEFAULT_MIN_HEIGHT = 0;
+/** Swiss terrain maximum elevation in meters */
+export const MAX_ELEVATION = 10000;
 
 /** Switzerland WGS84 bounds: [west, south, east, north] in degrees */
 export const SWITZERLAND_WGS84_BOUNDS = [5.95587, 45.81802, 10.49203, 47.80838] as const;
-
-/** Swiss terrain minimum elevation in meters */
-export const SWISS_MIN_ELEVATION = 0;
-
-/** Swiss terrain maximum elevation in meters */
-export const SWISS_MAX_ELEVATION = 4500;
 
 // ============================================================================
 // TILE PROCESSING CONSTANTS

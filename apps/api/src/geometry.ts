@@ -1,7 +1,7 @@
 import { WGS84toEPSG3857, EPSG3857toWGS84, degToRad } from './projections';
 import {
-  DEFAULT_MAX_HEIGHT,
-  DEFAULT_MIN_HEIGHT,
+  MIN_ELEVATION,
+  MAX_ELEVATION,
   SWITZERLAND_WGS84_BOUNDS,
 } from './constants';
 
@@ -193,8 +193,8 @@ export function tileToRegionSquare(
     south: degToRad(southDeg),
     east: degToRad(eastDeg),
     north: degToRad(northDeg),
-    minH: DEFAULT_MIN_HEIGHT,
-    maxH: DEFAULT_MAX_HEIGHT,
+    minH: MIN_ELEVATION,
+    maxH: MAX_ELEVATION,
   };
 }
 

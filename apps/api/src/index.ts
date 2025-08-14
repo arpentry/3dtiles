@@ -18,8 +18,8 @@ import { memoize } from './memoize';
 import {
   TILE_SIZE,
   QUADTREE_MAX_LEVEL,
-  SWISS_MIN_ELEVATION,
-  SWISS_MAX_ELEVATION,
+  MIN_ELEVATION,
+  MAX_ELEVATION,
   TILE_CACHE_DURATION,
   GLB_CONTENT_TYPE,
 } from './constants';
@@ -118,8 +118,8 @@ app.get('/tileset.json', async (c: Context) => {
     const tileset = createTileset(
       globalBounds,
       tilesetCenter,
-      SWISS_MIN_ELEVATION,
-      SWISS_MAX_ELEVATION,
+      MIN_ELEVATION,
+      MAX_ELEVATION,
       QUADTREE_MAX_LEVEL,
     );
 
