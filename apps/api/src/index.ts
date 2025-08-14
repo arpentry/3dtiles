@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import tms from './routes/tms';
 import glb from './routes/glb';
 
 /**
@@ -23,8 +22,6 @@ app.use(
   }),
 );
 
-// Mount TMS routes
-app.route('/tms', tms);
 app.route('/', glb);
 
 export default app;
