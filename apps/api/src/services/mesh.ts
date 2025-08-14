@@ -1,22 +1,12 @@
 // @ts-ignore – no types
 import Martini from '@mapbox/martini';
-import { ELEVATION_NO_DATA } from './raster';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Default mesh error threshold for terrain simplification */
-const DEFAULT_MESH_ERROR = 10;
-
-/** Number of components per 3D vertex (x, y, z) */
-const VERTEX_COMPONENTS = 3;
-
-/** Number of vertices per triangle */
-const TRIANGLE_VERTICES = 3;
-
-/** Number of components per 2D vertex pair in Martini output */
-const MARTINI_VERTEX_STRIDE = 2;
+import {
+  ELEVATION_NO_DATA,
+  DEFAULT_MESH_ERROR,
+  VERTEX_COMPONENTS_3D,
+  TRIANGLE_VERTICES,
+  VERTEX_COMPONENTS_2D,
+} from '../constants';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -167,9 +157,9 @@ export function computeVertexNormals(
   
   // Accumulate face normals for each vertex
   for (let i = 0; i < indices.length; i += TRIANGLE_VERTICES) {
-    const ia = indices[i] * VERTEX_COMPONENTS;
-    const ib = indices[i + 1] * VERTEX_COMPONENTS;
-    const ic = indices[i + 2] * VERTEX_COMPONENTS;
+    const ia = indices[i] * VERTEX_COMPONENTS_3D;
+    const ib = indices[i + 1] * VERTEX_COMPONENTS_3D;
+    const ic = indices[i + 2] * VERTEX_COMPONENTS_3D;
 
     const [nx, ny, nz] = computeFaceNormal(positions, ia, ib, ic);
 
@@ -180,7 +170,7 @@ export function computeVertexNormals(
   }
 
   // Normalize all vertex normals
-  for (let i = 0; i < normals.length; i += VERTEX_COMPONENTS) {
+  for (let i = 0; i < normals.length; i += VERTEX_COMPONENTS_3D) {
     normalizeVector(normals, i);
   }
   
@@ -224,17 +214,17 @@ export function mapCoordinates(
   let minElevation = Infinity;
   let maxElevation = -Infinity;
 
-  for (let i = 0; i < vertices.length; i += MARTINI_VERTEX_STRIDE) {
+  for (let i = 0; i < vertices.length; i += VERTEX_COMPONENTS_2D) {
     const gx = vertices[i]; // Grid X (0 to TILE_SIZE)
     const gy = vertices[i + 1]; // Grid Y (0 to TILE_SIZE)
     const elevation = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
 
     if (elevation === ELEVATION_NO_DATA) {
-      vMap.set(i / MARTINI_VERTEX_STRIDE, -1);
+      vMap.set(i / VERTEX_COMPONENTS_2D, -1);
       continue;
     }
 
-    vMap.set(i / MARTINI_VERTEX_STRIDE, next);
+    vMap.set(i / VERTEX_COMPONENTS_2D, next);
 
     // COORDINATE SYSTEM TRANSFORMATION:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates

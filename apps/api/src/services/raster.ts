@@ -2,22 +2,12 @@ import { fromUrl } from 'geotiff';
 import { encode } from '@cf-wasm/png';
 import { createSquareBounds, Bounds, Coordinate } from '../utils/geometry';
 import { TileBounds } from './tiles';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Default no-data value for elevation rasters */
-export const ELEVATION_NO_DATA = -9999;
-
-/** Default resampling method for texture data */
-const DEFAULT_RESAMPLE_METHOD = 'bilinear' as const;
-
-/** RGBA alpha channel value for opaque pixels */
-const ALPHA_OPAQUE = 255;
-
-/** Number of color channels in RGBA format */
-const RGBA_CHANNELS = 4;
+import {
+  ELEVATION_NO_DATA,
+  DEFAULT_RESAMPLE_METHOD,
+  ALPHA_OPAQUE,
+  RGBA_CHANNELS,
+} from '../constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

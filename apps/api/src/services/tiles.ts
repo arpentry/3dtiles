@@ -1,24 +1,12 @@
 import { Bounds, Coordinate, tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Default 3D Tiles specification version */
-const TILES_VERSION = '1.1';
-
-/** Default coordinate system up-axis for terrain */
-const DEFAULT_UP_AXIS = 'Z' as const;
-
-/** Elevation-based geometric error scaling factor (2% of elevation range) */
-const ELEVATION_ERROR_FACTOR = 0.02;
-
-/** Minimum geometric error for leaf tiles */
-const MIN_GEOMETRIC_ERROR = 1;
-
-/** Quadtree subdivision multiplier */
-const QUAD_MULTIPLIER = 2;
+import {
+  TILES_VERSION,
+  DEFAULT_UP_AXIS,
+  ELEVATION_ERROR_FACTOR,
+  MIN_GEOMETRIC_ERROR,
+  QUAD_MULTIPLIER,
+} from '../constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

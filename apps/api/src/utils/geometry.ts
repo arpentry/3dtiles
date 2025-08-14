@@ -1,17 +1,9 @@
 import { WGS84toEPSG3857, EPSG3857toWGS84, degToRad } from './projections';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Default maximum height for 3D Tiles bounding regions in meters */
-const DEFAULT_MAX_HEIGHT = 5000;
-
-/** Default minimum height for 3D Tiles bounding regions in meters */
-const DEFAULT_MIN_HEIGHT = 0;
-
-/** Switzerland WGS84 bounds: [west, south, east, north] in degrees */
-const SWITZERLAND_WGS84_BOUNDS = [5.95587, 45.81802, 10.49203, 47.80838] as const;
+import {
+  DEFAULT_MAX_HEIGHT,
+  DEFAULT_MIN_HEIGHT,
+  SWITZERLAND_WGS84_BOUNDS,
+} from '../constants';
 
 // ============================================================================
 // TYPE DEFINITIONS

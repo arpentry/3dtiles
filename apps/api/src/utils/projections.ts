@@ -1,39 +1,13 @@
 import proj4 from 'proj4';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Degrees to radians conversion factor */
-const DEG_TO_RAD_FACTOR = Math.PI / 180;
-
-/** WGS84 coordinate system identifier */
-const WGS84_CRS = 'WGS84';
-
-/** Swiss LV95 coordinate system identifier */
-const LV95_CRS = 'LV95';
-
-/** Web Mercator (EPSG:3857) coordinate system identifier */
-const WEB_MERCATOR_CRS = 'EPSG:3857';
-
-// ============================================================================
-// PROJECTION DEFINITIONS
-// ============================================================================
-
-/** WGS84 (World Geodetic System 1984) projection definition */
-const WGS84_PROJ_DEF = '+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees';
-
-/** 
- * Swiss LV95 (Landesvermessung 1995) projection definition
- * Official Swiss coordinate system using Oblique Mercator projection
- */
-const LV95_PROJ_DEF = '+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0,0,0,0 +units=m +no_defs';
-
-/** 
- * Web Mercator (EPSG:3857) projection definition
- * Spherical Mercator projection used by web mapping services
- */
-const WEB_MERCATOR_PROJ_DEF = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
+import {
+  DEG_TO_RAD_FACTOR,
+  WGS84_CRS,
+  LV95_CRS,
+  WEB_MERCATOR_CRS,
+  WGS84_PROJ_DEF,
+  LV95_PROJ_DEF,
+  WEB_MERCATOR_PROJ_DEF,
+} from '../constants';
 
 // ============================================================================
 // PROJECTION SYSTEM SETUP

@@ -15,34 +15,17 @@ import { createGltfDocument } from '../services/gltf';
 import { calculateTileBounds, createTileset } from '../services/tiles';
 import { Bindings } from '../index';
 import { memoize } from '../utils/memoize';
+import {
+  TILE_SIZE,
+  QUADTREE_MAX_LEVEL,
+  SWISS_MIN_ELEVATION,
+  SWISS_MAX_ELEVATION,
+  TILE_CACHE_DURATION,
+  SWISS_ELEVATION_FILE,
+  SWISS_TEXTURE_FILE,
+  GLB_CONTENT_TYPE,
+} from '../constants';
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Tile resolution in pixels (grid will be TILE_SIZE + 1) */
-export const TILE_SIZE = 512;
-
-/** Maximum quadtree subdivision level for 3D Tiles */
-export const QUADTREE_MAX_LEVEL = 5;
-
-/** Swiss terrain minimum elevation in meters */
-const SWISS_MIN_ELEVATION = 0;
-
-/** Swiss terrain maximum elevation in meters */
-const SWISS_MAX_ELEVATION = 4500;
-
-/** Cache duration for tile responses in seconds */
-const TILE_CACHE_DURATION = 3600;
-
-/** Swiss elevation data file path */
-const SWISS_ELEVATION_FILE = 'swissalti3d/swissalti3d_web_mercator.tif';
-
-/** Swiss texture data file path */
-const SWISS_TEXTURE_FILE = 'swissimage-dop10/swissimage_web_mercator.tif';
-
-/** GLB content type for HTTP responses */
-const GLB_CONTENT_TYPE = 'model/gltf-binary';
 
 // ============================================================================
 // ROUTE SETUP

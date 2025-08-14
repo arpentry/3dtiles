@@ -1,23 +1,11 @@
 import { Document, NodeIO, TextureInfo, Accessor, Buffer, Material } from '@gltf-transform/core';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Default base color for terrain materials (white) */
-const DEFAULT_BASE_COLOR: [number, number, number, number] = [1, 1, 1, 1];
-
-/** Default roughness factor for terrain surfaces (semi-glossy) */
-const DEFAULT_ROUGHNESS_FACTOR = 0.95;
-
-/** Default metallic factor for terrain (non-metallic) */
-const DEFAULT_METALLIC_FACTOR = 0.0;
-
-/** Threshold for switching from 16-bit to 32-bit indices */
-const INDEX_16BIT_LIMIT = 65535;
-
-/** PNG MIME type for embedded textures */
-const PNG_MIME_TYPE = 'image/png';
+import {
+  DEFAULT_BASE_COLOR,
+  DEFAULT_ROUGHNESS_FACTOR,
+  DEFAULT_METALLIC_FACTOR,
+  INDEX_16BIT_LIMIT,
+  PNG_MIME_TYPE,
+} from '../constants';
 
 // ============================================================================
 // TYPE DEFINITIONS
