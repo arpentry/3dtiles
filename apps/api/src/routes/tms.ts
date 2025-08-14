@@ -1,14 +1,13 @@
 import { Hono } from 'hono';
 import {
   GeoTIFF,
-  GeoTIFFImage,
   ReadRasterResult,
   fromUrl,
   writeArrayBuffer,
 } from 'geotiff';
-import { tileToRegionSquare, createSquareBounds } from '../utils/geometry';
+import { tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
-import { getTiffMetadata } from '../services/raster';
+import { readTiffMetadata } from '../services/raster';
 import { Bindings } from '../index';
 
 const tms = new Hono<{ Bindings: Bindings }>();
@@ -50,19 +49,13 @@ tms.get('/:tilemap', async (c) => {
 
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
-    const { bbox } = await getTiffMetadata(url);
-    const squareBounds = createSquareBounds([
-      bbox[0],
-      bbox[1],
-      bbox[2],
-      bbox[3],
-    ]);
+    const { tilesetBounds } = await readTiffMetadata(url);
 
     const tileMapXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <TileMap>
   <Title>${tilemap}</Title>
   <SRS>EPSG:3857</SRS>
-  <BoundingBox minx="${squareBounds[0]}" miny="${squareBounds[1]}" maxx="${squareBounds[2]}" maxy="${squareBounds[3]}" />
+  <BoundingBox minx="${tilesetBounds[0]}" miny="${tilesetBounds[1]}" maxx="${tilesetBounds[2]}" maxy="${tilesetBounds[3]}" />
   <TileFormat width="512" height="512" mime-type="image/tiff" extension="tif" />
 </TileMap>`;
 
@@ -102,18 +95,11 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
 
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
+    const { tilesetBounds } = await readTiffMetadata(url);
+    
+    // We still need the GeoTIFF instance for reading raster data
     const tiff: GeoTIFF = await fromUrl(url);
-    const image: GeoTIFFImage = await tiff.getImage();
-    const bbox = image.getBoundingBox();
-
-    // Create square bounds that encompass the rectangular GeoTIFF bounds
-    const squareBounds = createSquareBounds([
-      bbox[0],
-      bbox[1],
-      bbox[2],
-      bbox[3],
-    ]);
-    const tileRegion = tileToRegionSquare(squareBounds, levelNum, xNum, yNum);
+    const tileRegion = tileToRegionSquare(tilesetBounds, levelNum, xNum, yNum);
 
     const westDeg = tileRegion.west * (180 / Math.PI);
     const southDeg = tileRegion.south * (180 / Math.PI);

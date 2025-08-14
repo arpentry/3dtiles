@@ -3,7 +3,7 @@ import { cache } from 'hono/cache';
 import {
   readElevationRaster,
   generateTexturePng,
-  getTiffMetadata,
+  readTiffMetadata,
 } from '../services/raster';
 import {
   generateTerrainMesh,
@@ -21,7 +21,7 @@ export const QUADTREE_MAX_LEVEL = 5;
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
-export const memoizedTiffMetadata = memoize(getTiffMetadata);
+export const memoizedTiffMetadata = memoize(readTiffMetadata);
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure

@@ -33,9 +33,9 @@ export interface TiffMetadata {
 const ELEVATION_NO_DATA = -9999;
 
 /**
- * Get TIFF metadata including the tileset bounds and center
+ * Read TIFF metadata including the tileset bounds and center
  */
-export async function getTiffMetadata(url: string): Promise<TiffMetadata> {
+export async function readTiffMetadata(url: string): Promise<TiffMetadata> {
   try {
     const tiff = await fromUrl(url);
     const image = await tiff.getImage();
