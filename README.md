@@ -59,23 +59,23 @@ ELEVATION_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissalti
 TEXTURE_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissimage-dop10/swissimage_web_mercator.tif
 ```
 
-#### For Web App (Cloudflare Pages)
+#### For Web App (Static Assets)
 
-The web app uses the following environment variable configured in `apps/web/wrangler.json`:
+The web app uses the following environment variable for build-time injection:
 
-```json
-{
-  "vars": {
-    "VITE_TILESET_URL": "https://3dtiles-api.arpentry.com/tileset.json"
-  }
-}
+For local development and builds, create `apps/web/.env`:
+
+```bash
+VITE_TILESET_URL=https://3dtiles-api.arpentry.com/tileset.json
 ```
 
-For local development, create `apps/web/.env`:
+For local development only, you can override with:
 
 ```bash
 VITE_TILESET_URL=http://localhost:8787
 ```
+
+**Note**: If deploying to Cloudflare Pages, set this environment variable in the Cloudflare dashboard under Settings → Environment variables.
 
 #### For R2 Upload (Optional)
 

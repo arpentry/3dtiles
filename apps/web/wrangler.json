@@ -9,8 +9,5 @@
     "logs": {
       "enabled": true
     }
-  },
-  "vars": {
-    "VITE_TILESET_URL": "https://3dtiles-api.arpentry.com/tileset.json"
   }
 }
