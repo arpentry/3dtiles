@@ -139,3 +139,18 @@ export const DEM_RESOLUTION = 2;
 
 /** Scale factor for resolution-based geometric error calculation */
 export const RESOLUTION_SCALE_FACTOR = 25;
+
+/** Scale factor for diagonal-based geometric error calculation (half-diagonal heuristic) */
+export const DIAGONAL_SCALE_FACTOR = 2.0;
+
+/** Target screen space error in pixels for SSE-based geometric error calculation */
+export const SSE_TARGET_PIXELS = 16;
+
+/** Representative camera distance in meters for SSE-based calculations (when root tile fills view) */
+export const SSE_REPRESENTATIVE_DISTANCE = 10000;
+
+/** Default viewport height in pixels for SSE-based calculations */
+export const SSE_DEFAULT_VIEWPORT_HEIGHT = 1080;
+
+/** Default camera field of view in radians for SSE-based calculations (60 degrees) */
+export const SSE_DEFAULT_FOV_RADIANS = Math.PI / 3;

@@ -36,7 +36,7 @@ export default function Tiles3D({ url }: { url: string }) {
       errorTarget: { value: 4, min: 1, max: 20, step: 1 },
       maxDepth: { value: 10, min: 1, max: 20, step: 1 },
       displayActiveTiles: true,
-      geometricErrorMethod: { value: 'resolution-based', options: ['elevation-based', 'resolution-based'] },
+      geometricErrorMethod: { value: 'resolution-based', options: ['resolution-based', 'diagonal-based', 'sse-based', 'elevation-based'] },
     },
   );
 

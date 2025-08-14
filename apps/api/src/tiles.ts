@@ -8,6 +8,11 @@ import {
   MIN_GEOMETRIC_ERROR,
   DEM_RESOLUTION,
   RESOLUTION_SCALE_FACTOR,
+  DIAGONAL_SCALE_FACTOR,
+  SSE_TARGET_PIXELS,
+  SSE_REPRESENTATIVE_DISTANCE,
+  SSE_DEFAULT_VIEWPORT_HEIGHT,
+  SSE_DEFAULT_FOV_RADIANS,
 } from './constants';
 
 // ============================================================================
@@ -112,7 +117,9 @@ export interface Tileset {
 /** Geometric error calculation methods */
 export enum GeometricErrorMethod {
   RESOLUTION_BASED = 'resolution-based',
-  ELEVATION_BASED = 'elevation-based'
+  ELEVATION_BASED = 'elevation-based',
+  DIAGONAL_BASED = 'diagonal-based',
+  SSE_BASED = 'sse-based'
 }
 
 /** Default geometric error calculation method */
@@ -175,27 +182,91 @@ function calculateResolutionBasedError(level: number): number {
 }
 
 /**
+ * Calculate geometric error using diagonal-based method
+ *
+ * Uses the tile's planar diagonal as the basis for geometric error calculation.
+ * This method provides a stable, monotonic error that halves each level as tiles shrink.
+ * The error is calculated as scale × 0.5 × diagonal, following the half-diagonal heuristic.
+ *
+ * @param level - Quadtree level (0 = root)
+ * @param bounds - Tileset spatial bounds in Web Mercator [minX, minY, maxX, maxY]
+ * @returns Geometric error threshold for screen-space error calculations
+ */
+function calculateDiagonalBasedError(level: number, bounds: Bounds): number {
+  // Calculate tile dimensions at this level
+  const tileWidth = (bounds[2] - bounds[0]) / Math.pow(QUAD_MULTIPLIER, level);
+  const tileHeight = (bounds[3] - bounds[1]) / Math.pow(QUAD_MULTIPLIER, level);
+  
+  // Calculate planar diagonal using Pythagorean theorem
+  const diagonal = Math.hypot(tileWidth, tileHeight);
+  
+  // Apply half-diagonal heuristic with scale factor
+  const geometricError = DIAGONAL_SCALE_FACTOR * 0.5 * diagonal;
+  
+  return Math.max(MIN_GEOMETRIC_ERROR, geometricError);
+}
+
+/**
+ * Calculate geometric error using Screen Space Error (SSE) based method
+ *
+ * Uses the viewer's SSE formula to back-calculate geometric error thresholds.
+ * This method provides precise control over refinement based on camera distance,
+ * field of view, and viewport characteristics.
+ *
+ * Formula: geometricError ≈ SSE_target * (2 * d * tan(fov/2)) / viewportHeight
+ * 
+ * The method scales the root geometric error by level using the standard 1/2^level
+ * relationship to maintain consistent refinement behavior across the quadtree.
+ *
+ * @param level - Quadtree level (0 = root)
+ * @returns Geometric error threshold for screen-space error calculations
+ */
+function calculateSSEBasedError(level: number): number {
+  // Calculate root geometric error using SSE formula
+  // geometricError = SSE_target * (2 * distance * tan(fov/2)) / viewportHeight
+  const rootGeometricError = SSE_TARGET_PIXELS * 
+    (2 * SSE_REPRESENTATIVE_DISTANCE * Math.tan(SSE_DEFAULT_FOV_RADIANS / 2)) / 
+    SSE_DEFAULT_VIEWPORT_HEIGHT;
+  
+  // Scale by level using standard quadtree relationship
+  const geometricError = rootGeometricError / Math.pow(QUAD_MULTIPLIER, level);
+  
+  return Math.max(MIN_GEOMETRIC_ERROR, geometricError);
+}
+
+/**
  * Calculate geometric error for a quadtree level
  *
  * Uses elevation-based scaling by default, or resolution-based when specified.
  * Elevation-based: root error is 2% of elevation range (terrain-appropriate)
  * Resolution-based: root error is DEM resolution × scale factor (consistent across terrain)
+ * Diagonal-based: root error is based on tile's planar diagonal (projection-aware)
+ * SSE-based: root error is calculated from Screen Space Error formula (viewer-aware)
  *
  * @param level - Quadtree level (0 = root)
  * @param elevationRange - Total elevation range (maxHeight - minHeight) in meters
  * @param method - Geometric error calculation method
+ * @param bounds - Tileset spatial bounds (required for diagonal-based method)
  * @returns Geometric error threshold for screen-space error calculations
  */
 function calculateGeometricError(
   level: number,
   elevationRange: number,
-  method: GeometricErrorMethod = GeometricErrorMethod.RESOLUTION_BASED
+  method: GeometricErrorMethod = GeometricErrorMethod.RESOLUTION_BASED,
+  bounds?: Bounds
 ): number {
   switch (method) {
     case GeometricErrorMethod.RESOLUTION_BASED:
       return calculateResolutionBasedError(level);
     case GeometricErrorMethod.ELEVATION_BASED:
       return calculateElevationBasedError(level, elevationRange);
+    case GeometricErrorMethod.DIAGONAL_BASED:
+      if (!bounds) {
+        throw new Error('Bounds parameter is required for diagonal-based geometric error calculation');
+      }
+      return calculateDiagonalBasedError(level, bounds);
+    case GeometricErrorMethod.SSE_BASED:
+      return calculateSSEBasedError(level);
     default:
       // TypeScript exhaustiveness check
       const _exhaustive: never = method;
@@ -309,6 +380,7 @@ function createTile(
  * @param centerY - Tileset center Y coordinate (Web Mercator)
  * @param maxLevel - Maximum subdivision level
  * @param method - Geometric error calculation method
+ * @param rootBounds - Root tileset bounds (required for diagonal-based method)
  * @returns Complete quadtree tile with children (if not at max level)
  */
 function createQuadtree(
@@ -320,9 +392,10 @@ function createQuadtree(
   centerY: number,
   maxLevel: number,
   method: GeometricErrorMethod = GeometricErrorMethod.ELEVATION_BASED,
+  rootBounds?: Bounds,
 ): Tile {
   const elevationRange = maxHeight - minHeight;
-  const geometricError = calculateGeometricError(level, elevationRange, method);
+  const geometricError = calculateGeometricError(level, elevationRange, method, rootBounds);
   const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
   
   // Create children if we haven't reached max level
@@ -348,6 +421,7 @@ function createQuadtree(
         centerY,
         maxLevel,
         method,
+        rootBounds,
       );
       children.push(childTile);
     }
@@ -451,7 +525,7 @@ export function createTileset(
       version: TILES_VERSION,
       gltfUpAxis: DEFAULT_UP_AXIS,
     },
-    geometricError: calculateGeometricError(0, elevationRange, method),
+    geometricError: calculateGeometricError(0, elevationRange, method, bounds),
     root: createQuadtree(
       0, // level (root)
       rootQuadrant,
@@ -461,6 +535,7 @@ export function createTileset(
       center[1], // centerY
       maxLevel,
       method,
+      bounds,
     ),
   };
 }
