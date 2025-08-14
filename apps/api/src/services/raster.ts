@@ -3,23 +3,133 @@ import { encode } from '@cf-wasm/png';
 import { createSquareBounds, Bounds, Coordinate } from '../utils/geometry';
 import { TileBounds } from './tiles';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/** Default no-data value for elevation rasters */
+const ELEVATION_NO_DATA = -9999;
+
+/** Default resampling method for texture data */
+const DEFAULT_RESAMPLE_METHOD = 'bilinear' as const;
+
+/** RGBA alpha channel value for opaque pixels */
+const ALPHA_OPAQUE = 255;
+
+/** Number of color channels in RGBA format */
+const RGBA_CHANNELS = 4;
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/** Elevation raster data with spatial bounds */
 export interface ElevationRaster {
+  /** Typed array containing elevation values */
   data: TypedArray;
+  /** Spatial bounds of the raster data */
   bbox: Bounds;
 }
 
+/** GeoTIFF metadata including spatial information */
 export interface TiffMetadata {
+  /** Image width in pixels */
   imageWidth: number;
+  /** Image height in pixels */
   imageHeight: number;
+  /** Original image bounds from GeoTIFF */
   imageBounds: Bounds;
+  /** Square bounds for tileset generation */
   tilesetBounds: Bounds;
+  /** Center point of the tileset */
   tilesetCenter: Coordinate;
 }
 
-const ELEVATION_NO_DATA = -9999;
+// ============================================================================
+// PRIVATE HELPER FUNCTIONS
+// ============================================================================
 
 /**
- * Read GeoTIFF metadata including the tileset bounds and center
+ * Compute expanded and clamped bounds for seamless tile edges
+ * 
+ * Expands the tile bounds by one pixel in the east and south directions
+ * to ensure seamless edges between adjacent tiles, then clamps to the
+ * original image bounds to prevent out-of-bounds requests.
+ * 
+ * @param imageBounds - Original GeoTIFF image bounds
+ * @param tileBounds - Target tile bounds
+ * @param tileSize - Tile size in pixels
+ * @returns Expanded and clamped bounds for raster reading
+ */
+function computeExpandedClampedBounds(
+  imageBounds: Bounds,
+  tileBounds: TileBounds,
+  tileSize: number,
+): Bounds {
+  const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
+  const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
+
+  const expandedBbox: Bounds = [
+    tileBounds.minX,
+    tileBounds.minY - pixelHeight, // extend south
+    tileBounds.maxX + pixelWidth, // extend east
+    tileBounds.maxY,
+  ];
+
+  return [
+    Math.max(expandedBbox[0], imageBounds[0]),
+    Math.max(expandedBbox[1], imageBounds[1]),
+    Math.min(expandedBbox[2], imageBounds[2]),
+    Math.min(expandedBbox[3], imageBounds[3]),
+  ];
+}
+
+/**
+ * Convert raster bands to RGBA pixel data
+ * 
+ * @param bands - Array of raster bands (grayscale or RGB)
+ * @param pixelCount - Total number of pixels
+ * @returns RGBA pixel data as Uint8Array
+ */
+function convertBandsToRgba(bands: TypedArray[], pixelCount: number): Uint8Array {
+  const rgbaPixels = new Uint8Array(pixelCount * RGBA_CHANNELS);
+  const numBands = bands.length;
+
+  for (let i = 0; i < pixelCount; ++i) {
+    const baseIndex = i * RGBA_CHANNELS;
+    
+    if (numBands >= 3) {
+      // RGB data
+      rgbaPixels[baseIndex] = Number(bands[0][i]);     // Red
+      rgbaPixels[baseIndex + 1] = Number(bands[1][i]); // Green
+      rgbaPixels[baseIndex + 2] = Number(bands[2][i]); // Blue
+      rgbaPixels[baseIndex + 3] = ALPHA_OPAQUE;        // Alpha
+    } else {
+      // Grayscale data
+      const grayscale = Number(bands[0][i]);
+      rgbaPixels[baseIndex] = grayscale;     // Red
+      rgbaPixels[baseIndex + 1] = grayscale; // Green
+      rgbaPixels[baseIndex + 2] = grayscale; // Blue
+      rgbaPixels[baseIndex + 3] = ALPHA_OPAQUE; // Alpha
+    }
+  }
+
+  return rgbaPixels;
+}
+
+// ============================================================================
+// PUBLIC API FUNCTIONS
+// ============================================================================
+
+/**
+ * Read GeoTIFF metadata including tileset bounds and center
+ * 
+ * Extracts spatial metadata from a GeoTIFF file and calculates the
+ * square bounds and center point required for 3D Tiles generation.
+ * 
+ * @param url - URL to the GeoTIFF file
+ * @returns Metadata including dimensions, bounds, and center point
+ * @throws Error if the GeoTIFF cannot be read or processed
  */
 export async function readGeoTiffMetadata(url: string): Promise<TiffMetadata> {
   try {
@@ -45,32 +155,18 @@ export async function readGeoTiffMetadata(url: string): Promise<TiffMetadata> {
   }
 }
 
-// Compute clamped bounds, expanded by one pixel east/south to ensure seamless edges
-function computeExpandedClampedBounds(
-  imageBounds: Bounds,
-  tileBounds: TileBounds,
-  tileSize: number,
-): Bounds {
-  const pixelWidth = (tileBounds.maxX - tileBounds.minX) / tileSize;
-  const pixelHeight = (tileBounds.maxY - tileBounds.minY) / tileSize;
-
-  const expandedBbox: Bounds = [
-    tileBounds.minX,
-    tileBounds.minY - pixelHeight, // extend south
-    tileBounds.maxX + pixelWidth, // extend east
-    tileBounds.maxY,
-  ];
-
-  return [
-    Math.max(expandedBbox[0], imageBounds[0]),
-    Math.max(expandedBbox[1], imageBounds[1]),
-    Math.min(expandedBbox[2], imageBounds[2]),
-    Math.min(expandedBbox[3], imageBounds[3]),
-  ];
-}
-
 /**
- * Read elevation data from a GeoTIFF file
+ * Read elevation data from a GeoTIFF file for terrain generation
+ * 
+ * Extracts elevation data from a GeoTIFF file within the specified tile bounds,
+ * with expanded bounds to ensure seamless tile edges. The data is resampled
+ * to the requested tile size with proper no-data handling.
+ * 
+ * @param geoTiffUrl - URL to the GeoTIFF elevation file
+ * @param tileBounds - Spatial bounds of the target tile
+ * @param tileSize - Output tile size in pixels
+ * @returns Elevation raster data with spatial bounds
+ * @throws Error if elevation data cannot be read or is invalid
  */
 export async function readElevationDataFromGeoTiff(
   geoTiffUrl: string,
@@ -98,9 +194,19 @@ export async function readElevationDataFromGeoTiff(
 }
 
 /**
- * Create a texture from a GeoTIFF file
+ * Read a PNG texture from a GeoTIFF file for 3D rendering
+ * 
+ * Reads image data from a GeoTIFF file, converts it to RGBA format,
+ * and encodes it as a PNG texture suitable for use in 3D tiles.
+ * Supports both RGB and grayscale input data with bilinear resampling.
+ * 
+ * @param geoTiffUrl - URL to the GeoTIFF image file
+ * @param tileBounds - Spatial bounds of the target tile
+ * @param tileSize - Output tile size in pixels
+ * @returns PNG-encoded texture data as Uint8Array
+ * @throws Error if texture data cannot be read or processed
  */
-export async function createTextureFromGeoTiff(
+export async function readTextureDataFromGeoTiff(
   geoTiffUrl: string,
   tileBounds: TileBounds,
   tileSize: number,
@@ -115,7 +221,7 @@ export async function createTextureFromGeoTiff(
     bbox: clampedBbox,
     width: tileSize + 1,
     height: tileSize + 1,
-    resampleMethod: 'bilinear',
+    resampleMethod: DEFAULT_RESAMPLE_METHOD,
   });
 
   const bands = Array.isArray(raster) ? (raster as unknown as TypedArray[]) : [raster as TypedArray];
@@ -125,26 +231,7 @@ export async function createTextureFromGeoTiff(
 
   const outputSize = tileSize + 1;
   const pixelCount = outputSize * outputSize;
-  const rgbaPixels = new Uint8Array(pixelCount * 4);
-  const numBands = bands.length;
-
-  for (let i = 0; i < pixelCount; ++i) {
-    const baseIndex = i * 4;
-    if (numBands >= 3) {
-      rgbaPixels[baseIndex] = Number(bands[0][i]);
-      rgbaPixels[baseIndex + 1] = Number(bands[1][i]);
-      rgbaPixels[baseIndex + 2] = Number(bands[2][i]);
-      rgbaPixels[baseIndex + 3] = 255;
-    } else {
-      const grayscale = Number(bands[0][i]);
-      rgbaPixels[baseIndex] = grayscale;
-      rgbaPixels[baseIndex + 1] = grayscale;
-      rgbaPixels[baseIndex + 2] = grayscale;
-      rgbaPixels[baseIndex + 3] = 255;
-    }
-  }
+  const rgbaPixels = convertBandsToRgba(bands, pixelCount);
 
   return encode(rgbaPixels, outputSize, outputSize);
 }
-
-

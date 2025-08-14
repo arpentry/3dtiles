@@ -2,7 +2,7 @@ import { Hono, Context } from 'hono';
 import { cache } from 'hono/cache';
 import {
   readElevationDataFromGeoTiff,
-  createTextureFromGeoTiff,
+  readTextureDataFromGeoTiff,
   readGeoTiffMetadata,
 } from '../services/raster';
 import {
@@ -114,7 +114,7 @@ glb.get(
       }
 
       // 6. Generate optional texture
-      const texture = await createTextureFromGeoTiff(textureURL, tileBounds, TILE_SIZE);
+      const texture = await readTextureDataFromGeoTiff(textureURL, tileBounds, TILE_SIZE);
 
       // 7. Build glTF document
       const glbBuffer = await createGltfDocument(
