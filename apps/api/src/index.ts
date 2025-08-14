@@ -9,7 +9,6 @@ import glb from './routes/glb';
  */
 export type Bindings = {
   R2_PUBLIC_ARPENTRY_ENDPOINT: string;
-  KV_ARPENTRY: KVNamespace;
 };
 
 /**

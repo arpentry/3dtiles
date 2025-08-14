@@ -13,12 +13,5 @@
   },
   "env": {
     "R2_PUBLIC_ARPENTRY_ENDPOINT": "http://localhost:8787"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "KV_ARPENTRY",
-      "id": "60a82765032f436890cac83cd0777665",
-      "preview_id": "f44e6cf002d34c68996d9d65e5ecbeaa"
-    }
-  ]
+  }
 }
