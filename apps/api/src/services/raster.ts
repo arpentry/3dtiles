@@ -33,9 +33,9 @@ export interface TiffMetadata {
 const ELEVATION_NO_DATA = -9999;
 
 /**
- * Read TIFF metadata including the tileset bounds and center
+ * Read GeoTIFF metadata including the tileset bounds and center
  */
-export async function readTiffMetadata(url: string): Promise<TiffMetadata> {
+export async function readGeoTiffMetadata(url: string): Promise<TiffMetadata> {
   try {
     const tiff = await fromUrl(url);
     const image = await tiff.getImage();
@@ -59,9 +59,9 @@ export async function readTiffMetadata(url: string): Promise<TiffMetadata> {
   }
 }
 
-// Compute a clamped bounding box, expanded by one pixel east/south to ensure seamless edges
-function computeExpandedClampedBbox(
-  imageBbox: Bounds,
+// Compute clamped bounds, expanded by one pixel east/south to ensure seamless edges
+function computeExpandedClampedBounds(
+  imageBounds: Bounds,
   tileBounds: TileBounds,
   tileSize: number,
 ): Bounds {
@@ -76,26 +76,26 @@ function computeExpandedClampedBbox(
   ];
 
   return [
-    Math.max(expandedBbox[0], imageBbox[0]),
-    Math.max(expandedBbox[1], imageBbox[1]),
-    Math.min(expandedBbox[2], imageBbox[2]),
-    Math.min(expandedBbox[3], imageBbox[3]),
+    Math.max(expandedBbox[0], imageBounds[0]),
+    Math.max(expandedBbox[1], imageBounds[1]),
+    Math.min(expandedBbox[2], imageBounds[2]),
+    Math.min(expandedBbox[3], imageBounds[3]),
   ];
 }
 
 /**
- * Read elevation data from TIFF file
+ * Read elevation data from a GeoTIFF file
  */
-export async function readElevationRaster(
-  elevationUrl: string,
+export async function readElevationDataFromGeoTiff(
+  geoTiffUrl: string,
   tileBounds: TileBounds,
   tileSize: number,
 ): Promise<ElevationRaster> {
-  const tiff = await fromUrl(elevationUrl);
+  const tiff = await fromUrl(geoTiffUrl);
   const image = await tiff.getImage();
   const imageBbox = image.getBoundingBox() as Bounds;
 
-  const clampedBbox = computeExpandedClampedBbox(imageBbox, tileBounds, tileSize);
+  const clampedBbox = computeExpandedClampedBounds(imageBbox, tileBounds, tileSize);
 
   const raster = await tiff.readRasters({
     bbox: clampedBbox,
@@ -112,18 +112,18 @@ export async function readElevationRaster(
 }
 
 /**
- * Generate texture from TIFF file
+ * Create a texture from a GeoTIFF file
  */
-export async function generateTexturePng(
-  textureUrl: string,
+export async function createTextureFromGeoTiff(
+  geoTiffUrl: string,
   tileBounds: TileBounds,
   tileSize: number,
 ): Promise<Uint8Array> {
-  const tiff = await fromUrl(textureUrl);
+  const tiff = await fromUrl(geoTiffUrl);
   const image = await tiff.getImage();
   const imageBbox = image.getBoundingBox() as Bounds;
 
-  const clampedBbox = computeExpandedClampedBbox(imageBbox, tileBounds, tileSize);
+  const clampedBbox = computeExpandedClampedBounds(imageBbox, tileBounds, tileSize);
 
   const raster = await tiff.readRasters({
     bbox: clampedBbox,

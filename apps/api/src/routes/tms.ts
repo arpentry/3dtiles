@@ -7,7 +7,7 @@ import {
 } from 'geotiff';
 import { tileToRegionSquare } from '../utils/geometry';
 import { WGS84toEPSG3857 } from '../utils/projections';
-import { readTiffMetadata } from '../services/raster';
+import { readGeoTiffMetadata } from '../services/raster';
 import { Bindings } from '../index';
 
 const tms = new Hono<{ Bindings: Bindings }>();
@@ -49,7 +49,7 @@ tms.get('/:tilemap', async (c) => {
 
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
-    const { tilesetBounds } = await readTiffMetadata(url);
+    const { tilesetBounds } = await readGeoTiffMetadata(url);
 
     const tileMapXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <TileMap>
@@ -95,7 +95,7 @@ tms.get('/:tilemap/:z/:x/:y.tif', async (c) => {
 
   try {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${filename}`;
-    const { tilesetBounds } = await readTiffMetadata(url);
+    const { tilesetBounds } = await readGeoTiffMetadata(url);
     
     // We still need the GeoTIFF instance for reading raster data
     const tiff: GeoTIFF = await fromUrl(url);

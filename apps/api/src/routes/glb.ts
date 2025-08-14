@@ -1,9 +1,9 @@
 import { Hono, Context } from 'hono';
 import { cache } from 'hono/cache';
 import {
-  readElevationRaster,
-  generateTexturePng,
-  readTiffMetadata,
+  readElevationDataFromGeoTiff,
+  createTextureFromGeoTiff,
+  readGeoTiffMetadata,
 } from '../services/raster';
 import {
   generateTerrainMesh,
@@ -21,7 +21,7 @@ export const QUADTREE_MAX_LEVEL = 5;
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
-export const memoizedTiffMetadata = memoize(readTiffMetadata);
+export const memoizedTiffMetadata = memoize(readGeoTiffMetadata);
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
@@ -105,7 +105,7 @@ glb.get(
 
       // 2. Read elevation data
       const { data: elevationData, bbox: elevationBbox } =
-        await readElevationRaster(elevationURL, tileBounds, TILE_SIZE);
+        await readElevationDataFromGeoTiff(elevationURL, tileBounds, TILE_SIZE);
 
       // 3. Generate terrain mesh
       const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
@@ -144,7 +144,7 @@ glb.get(
       }
 
       // 6. Generate optional texture
-      const texture = await generateTexturePng(textureURL, tileBounds, TILE_SIZE);
+      const texture = await createTextureFromGeoTiff(textureURL, tileBounds, TILE_SIZE);
       if (texture) {
         console.log('   🖼️ Texture generated');
       }
