@@ -17,44 +17,47 @@ export interface TileBounds {
 export type Bounds = [number, number, number, number];
 export type Coordinate = [number, number];
 
-// PNG payload encoded as RGBA8
-
-export interface GlobalBoundsInfo {
-  globalBounds: Bounds;
-  tilesetCenter: Coordinate;
-}
-
 export interface ElevationRaster {
   data: TypedArray;
   bbox: Bounds;
 }
 
 export interface TiffMetadata {
-  bbox: Bounds;
-  width: number;
-  height: number;
+  imageWidth: number;
+  imageHeight: number;
+  imageBounds: Bounds;
+  tilesetBounds: Bounds;
+  tilesetCenter: Coordinate;
 }
 
 const ELEVATION_NO_DATA = -9999;
 
 /**
- * Fetch global bounds and tileset center from a raster URL
+ * Get TIFF metadata including the tileset bounds and center
  */
-export const fetchGlobalBounds = async (
-  url: string,
-): Promise<GlobalBoundsInfo> => {
+export async function getTiffMetadata(url: string): Promise<TiffMetadata> {
   try {
-    const { bbox } = await getTiffMetadata(url);
-    const bounds = createSquareBounds(bbox as Bounds);
+    const tiff = await fromUrl(url);
+    const image = await tiff.getImage();
+    const imageBounds = image.getBoundingBox() as Bounds;
+    const tileBounds = createSquareBounds(imageBounds);
+    const tilesetCenter: Coordinate = [
+      (tileBounds[0] + tileBounds[2]) / 2,
+      (tileBounds[1] + tileBounds[3]) / 2,
+    ];
+
     return {
-      globalBounds: bounds,
-      tilesetCenter: [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2],
+      imageWidth: image.getWidth(),
+      imageHeight: image.getHeight(),
+      imageBounds,
+      tilesetBounds: tileBounds,
+      tilesetCenter: tilesetCenter,
     };
   } catch (err) {
-    console.error('Failed to fetch global bounds for url:', url, err);
+    console.error('Failed to fetch TIFF metadata for url:', url, err);
     throw err;
   }
-};
+}
 
 // Compute a clamped bounding box, expanded by one pixel east/south to ensure seamless edges
 function computeExpandedClampedBbox(
@@ -158,15 +161,4 @@ export async function generateTexturePng(
   return encode(rgbaPixels, outputSize, outputSize);
 }
 
-/**
- * Get TIFF metadata for TMS services
- */
-export async function getTiffMetadata(url: string): Promise<TiffMetadata> {
-  const tiff = await fromUrl(url);
-  const image = await tiff.getImage();
-  return {
-    bbox: image.getBoundingBox() as Bounds,
-    width: image.getWidth(),
-    height: image.getHeight(),
-  };
-}
+

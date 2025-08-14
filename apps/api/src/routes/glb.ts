@@ -3,7 +3,7 @@ import { cache } from 'hono/cache';
 import {
   readElevationRaster,
   generateTexturePng,
-  fetchGlobalBounds,
+  getTiffMetadata,
 } from '../services/raster';
 import {
   generateTerrainMesh,
@@ -21,7 +21,7 @@ export const QUADTREE_MAX_LEVEL = 5;
 
 const glb = new Hono<{ Bindings: Bindings }>();
 
-export const memoizedGlobalBounds = memoize(fetchGlobalBounds);
+export const memoizedTiffMetadata = memoize(getTiffMetadata);
 
 /**
  * Tileset JSON endpoint - provides 3D Tiles structure
@@ -33,7 +33,7 @@ glb.get('/tileset.json', async (c: Context) => {
     const url = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevKey}`;
     console.log('🌍 Elevation URL:', url);
 
-    const { globalBounds, tilesetCenter } = await memoizedGlobalBounds(url);
+    const { tilesetBounds: globalBounds, tilesetCenter: tilesetCenter } = await memoizedTiffMetadata(url);
 
     const minH = 0;
     const maxH = 4500; // Swiss terrain height range
@@ -90,7 +90,7 @@ glb.get(
     const elevationURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${elevationFile}`;
     const textureURL = `${c.env.R2_PUBLIC_ARPENTRY_ENDPOINT}/${textureFile}`;
 
-    const { globalBounds, tilesetCenter } = await memoizedGlobalBounds(elevationURL);
+    const { tilesetBounds: globalBounds, tilesetCenter: tilesetCenter } = await memoizedTiffMetadata(elevationURL);
 
     try {
       // 1. Calculate tile bounds
