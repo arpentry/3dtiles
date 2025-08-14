@@ -125,11 +125,17 @@ export const TILES_VERSION = '1.1';
 /** Default coordinate system up-axis for terrain */
 export const DEFAULT_UP_AXIS = 'Z' as const;
 
+/** Quadtree subdivision multiplier */
+export const QUAD_MULTIPLIER = 2;
+
 /** Elevation-based geometric error scaling factor (2% of elevation range) */
 export const ELEVATION_ERROR_FACTOR = 0.02;
 
 /** Minimum geometric error for leaf tiles */
 export const MIN_GEOMETRIC_ERROR = 1;
 
-/** Quadtree subdivision multiplier */
-export const QUAD_MULTIPLIER = 2;
+/** DEM resolution in meters for resolution-based geometric error */
+export const DEM_RESOLUTION = 2;
+
+/** Scale factor for resolution-based geometric error calculation */
+export const RESOLUTION_SCALE_FACTOR = 25;

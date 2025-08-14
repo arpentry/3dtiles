@@ -13,7 +13,7 @@ import {
   computeVertexNormals,
 } from './mesh';
 import { createGltfDocument } from './gltf';
-import { calculateTileBounds, createTileset } from './tiles';
+import { calculateTileBounds, createTileset, parseGeometricErrorMethod } from './tiles';
 import { memoize } from './memoize';
 import {
   TILE_SIZE,
@@ -113,6 +113,7 @@ app.use(
  */
 app.get('/tileset.json', async (c: Context) => {
   try {
+    const method = parseGeometricErrorMethod(c.req.query('method'));
     const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(c.env.ELEVATION_DATA_URL);
 
     const tileset = createTileset(
@@ -121,6 +122,7 @@ app.get('/tileset.json', async (c: Context) => {
       MIN_ELEVATION,
       MAX_ELEVATION,
       QUADTREE_MAX_LEVEL,
+      method,
     );
 
     return c.json(tileset);

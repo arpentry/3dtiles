@@ -30,12 +30,13 @@ export default function Tiles3D({ url }: { url: string }) {
   const { camera, gl } = useThree();
 
   // 3D Tiles Settings
-  const { errorTarget, maxDepth, displayActiveTiles } = useControls(
+  const { errorTarget, maxDepth, displayActiveTiles, geometricErrorMethod } = useControls(
     '3D Tiles - Settings',
     {
       errorTarget: { value: 4, min: 1, max: 20, step: 1 },
       maxDepth: { value: 10, min: 1, max: 20, step: 1 },
       displayActiveTiles: true,
+      geometricErrorMethod: { value: 'resolution-based', options: ['elevation-based', 'resolution-based'] },
     },
   );
 
@@ -61,6 +62,8 @@ export default function Tiles3D({ url }: { url: string }) {
   );
 
   useEffect(() => {
+    const urlWithParams = new URL(url, window.location.origin);
+    urlWithParams.searchParams.set('method', geometricErrorMethod);
     const tiles = new TilesRenderer(url);
 
     // Create DebugTilesPlugin with LOD-based coloring
@@ -115,6 +118,7 @@ export default function Tiles3D({ url }: { url: string }) {
     errorTarget,
     maxDepth,
     displayActiveTiles,
+    geometricErrorMethod,
     displayBoxBounds,
     enableLODColoring,
     enableTopoLines,

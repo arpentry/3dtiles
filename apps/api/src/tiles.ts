@@ -3,9 +3,11 @@ import { WGS84toEPSG3857 } from './projections';
 import {
   TILES_VERSION,
   DEFAULT_UP_AXIS,
+  QUAD_MULTIPLIER,
   ELEVATION_ERROR_FACTOR,
   MIN_GEOMETRIC_ERROR,
-  QUAD_MULTIPLIER,
+  DEM_RESOLUTION,
+  RESOLUTION_SCALE_FACTOR,
 } from './constants';
 
 // ============================================================================
@@ -107,24 +109,98 @@ export interface Tileset {
   root: Tile;
 }
 
+/** Geometric error calculation methods */
+export enum GeometricErrorMethod {
+  RESOLUTION_BASED = 'resolution-based',
+  ELEVATION_BASED = 'elevation-based'
+}
+
+/** Default geometric error calculation method */
+export const DEFAULT_GEOMETRIC_ERROR_METHOD = GeometricErrorMethod.RESOLUTION_BASED;
+
+/**
+ * Type guard to validate geometric error method string values
+ * @param value - String value to validate
+ * @returns True if value is a valid GeometricErrorMethod
+ */
+export function isValidGeometricErrorMethod(value: string): value is GeometricErrorMethod {
+  return Object.values(GeometricErrorMethod).includes(value as GeometricErrorMethod);
+}
+
+/**
+ * Parse geometric error method from string with fallback to default
+ * @param value - String value to parse (from query parameter)
+ * @returns Valid GeometricErrorMethod, defaults to ELEVATION_BASED if invalid/undefined
+ */
+export function parseGeometricErrorMethod(value: string | undefined): GeometricErrorMethod {
+  if (value && isValidGeometricErrorMethod(value)) {
+    return value;
+  }
+  return DEFAULT_GEOMETRIC_ERROR_METHOD;
+}
+
 // ============================================================================
 // PRIVATE HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Calculate geometric error for a given quadtree level using elevation-based approach
+ * Calculate geometric error using elevation-based method
  *
- * This function implements terrain-appropriate geometric error calculation that considers
- * elevation characteristics rather than generic 3D object dimensions. For terrain data,
- * the primary geometric variation is elevation change, not horizontal positioning.
- * 
+ * Uses elevation scaling as the basis for geometric error calculation, providing
+ * consistent error thresholds regardless of DEM resolution.
+ * Root error is calculated as elevation range × error factor.
+ *
  * @param level - Quadtree level (0 = root)
  * @param elevationRange - Total elevation range (maxHeight - minHeight) in meters
  * @returns Geometric error threshold for screen-space error calculations
  */
-function calculateGeometricError(level: number, elevationRange: number): number {
+function calculateElevationBasedError(level: number, elevationRange: number): number {
   const rootError = elevationRange * ELEVATION_ERROR_FACTOR;
   return Math.max(MIN_GEOMETRIC_ERROR, rootError / Math.pow(QUAD_MULTIPLIER, level));
+}
+
+/**
+ * Calculate geometric error using resolution-based method
+ *
+ * Uses DEM resolution as the basis for geometric error calculation, providing
+ * consistent error thresholds regardless of terrain elevation variation.
+ * Root error is calculated as DEM resolution × scale factor.
+ *
+ * @param level - Quadtree level (0 = root)
+ * @returns Geometric error threshold for screen-space error calculations
+ */
+function calculateResolutionBasedError(level: number): number {
+  const rootError = DEM_RESOLUTION * RESOLUTION_SCALE_FACTOR;
+  return Math.max(MIN_GEOMETRIC_ERROR, rootError / Math.pow(QUAD_MULTIPLIER, level));
+}
+
+/**
+ * Calculate geometric error for a quadtree level
+ *
+ * Uses elevation-based scaling by default, or resolution-based when specified.
+ * Elevation-based: root error is 2% of elevation range (terrain-appropriate)
+ * Resolution-based: root error is DEM resolution × scale factor (consistent across terrain)
+ *
+ * @param level - Quadtree level (0 = root)
+ * @param elevationRange - Total elevation range (maxHeight - minHeight) in meters
+ * @param method - Geometric error calculation method
+ * @returns Geometric error threshold for screen-space error calculations
+ */
+function calculateGeometricError(
+  level: number,
+  elevationRange: number,
+  method: GeometricErrorMethod = GeometricErrorMethod.RESOLUTION_BASED
+): number {
+  switch (method) {
+    case GeometricErrorMethod.RESOLUTION_BASED:
+      return calculateResolutionBasedError(level);
+    case GeometricErrorMethod.ELEVATION_BASED:
+      return calculateElevationBasedError(level, elevationRange);
+    default:
+      // TypeScript exhaustiveness check
+      const _exhaustive: never = method;
+      return _exhaustive;
+  }
 }
 
 /**
@@ -232,6 +308,7 @@ function createTile(
  * @param centerX - Tileset center X coordinate (Web Mercator)
  * @param centerY - Tileset center Y coordinate (Web Mercator)
  * @param maxLevel - Maximum subdivision level
+ * @param method - Geometric error calculation method
  * @returns Complete quadtree tile with children (if not at max level)
  */
 function createQuadtree(
@@ -242,9 +319,10 @@ function createQuadtree(
   centerX: number,
   centerY: number,
   maxLevel: number,
+  method: GeometricErrorMethod = GeometricErrorMethod.ELEVATION_BASED,
 ): Tile {
   const elevationRange = maxHeight - minHeight;
-  const geometricError = calculateGeometricError(level, elevationRange);
+  const geometricError = calculateGeometricError(level, elevationRange, method);
   const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
   
   // Create children if we haven't reached max level
@@ -269,6 +347,7 @@ function createQuadtree(
         centerX,
         centerY,
         maxLevel,
+        method,
       );
       children.push(childTile);
     }
@@ -344,6 +423,7 @@ export function calculateTileBounds(
  * @param minHeight - Minimum terrain elevation in meters
  * @param maxHeight - Maximum terrain elevation in meters  
  * @param maxLevel - Maximum quadtree subdivision level (0 = root only)
+ * @param method - Geometric error calculation method
  * @returns Complete 3D Tiles tileset ready for JSON serialization
  * ```
  */
@@ -353,6 +433,7 @@ export function createTileset(
   minHeight: number,
   maxHeight: number,
   maxLevel: number,
+  method: GeometricErrorMethod = GeometricErrorMethod.ELEVATION_BASED,
 ): Tileset {
   const rootQuadrant: Quadrant = {
     x: 0,
@@ -370,7 +451,7 @@ export function createTileset(
       version: TILES_VERSION,
       gltfUpAxis: DEFAULT_UP_AXIS,
     },
-    geometricError: calculateGeometricError(0, elevationRange),
+    geometricError: calculateGeometricError(0, elevationRange, method),
     root: createQuadtree(
       0, // level (root)
       rootQuadrant,
@@ -379,6 +460,7 @@ export function createTileset(
       center[0], // centerX
       center[1], // centerY
       maxLevel,
+      method,
     ),
   };
 }
