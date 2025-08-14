@@ -1,19 +1,9 @@
 import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
 import { cache } from 'hono/cache';
-import {
-  readElevationDataFromGeoTiff,
-  readTextureDataFromGeoTiff,
-  readGeoTiffMetadata,
-} from './raster';
-import {
-  generateTerrainMesh,
-  mapCoordinates,
-  buildTriangleIndices,
-  computeVertexNormals,
-} from './mesh';
-import { createGltfDocument } from './gltf';
-import { calculateTileBounds, createTileset, parseGeometricErrorMethod } from './tiles';
+import { readGeoTiffMetadata } from './raster';
+import { createTileset, parseGeometricErrorMethod } from './tiles';
+import { generateTileGlb } from './pipeline';
 import { memoize } from './memoize';
 import {
   TILE_SIZE,
@@ -166,50 +156,27 @@ app.get(
       // Get tileset metadata
       const { tilesetBounds: globalBounds, tilesetCenter } = await memoizedTiffMetadata(c.env.ELEVATION_DATA_URL);
 
-      // Calculate spatial bounds for this tile
-      const tileBounds = calculateTileBounds(level, x, y, globalBounds);
-
-      // Read elevation data and generate terrain mesh
-      const { data: elevationData, bbox: elevationBbox } = 
-        await readElevationDataFromGeoTiff(c.env.ELEVATION_DATA_URL, tileBounds, TILE_SIZE);
-      
-      const terrainMesh = generateTerrainMesh(elevationData, TILE_SIZE);
-
-      // Transform grid coordinates to 3D world positions
-      const meshGeometry = mapCoordinates(
-        terrainMesh.vertices,
-        terrainMesh.terrainGrid,
-        elevationBbox,
-        tilesetCenter,
-        TILE_SIZE,
-      );
-
-      // Build triangle indices and compute vertex normals
-      const triangleIndices = buildTriangleIndices(terrainMesh.triangles, meshGeometry.vertexMap);
-      
-      if (!triangleIndices.indices.length) {
-        console.error('No valid triangles generated for tile', { level, x, y });
-        return c.json({ error: 'Tile contains no valid geometry' }, 404);
-      }
-
-      meshGeometry.normals = computeVertexNormals(meshGeometry.positions, triangleIndices.indices);
-
-      // Read texture data for material
-      const texture = await readTextureDataFromGeoTiff(c.env.TEXTURE_DATA_URL, tileBounds, TILE_SIZE);
-
-      // Generate GLB document
-      const glbBuffer = await createGltfDocument(
-        meshGeometry.positions,
-        meshGeometry.uvs,
-        triangleIndices.indices,
-        meshGeometry.normals,
-        texture,
+      // Generate GLB tile using extracted pipeline
+      const glbBuffer = await generateTileGlb(
+        c.env.ELEVATION_DATA_URL,
+        c.env.TEXTURE_DATA_URL,
+        level,
+        x,
+        y,
+        globalBounds,
+        tilesetCenter
       );
 
       return createGlbResponse(glbBuffer, level, x, y);
 
     } catch (err) {
       console.error('Failed to generate GLB tile:', { level, x, y, error: err });
+      
+      // Handle specific geometry error from pipeline
+      if (err instanceof Error && err.message === 'Tile contains no valid geometry') {
+        return c.json({ error: 'Tile contains no valid geometry' }, 404);
+      }
+      
       return c.json({ error: 'Failed to generate tile' }, 500);
     }
   },
