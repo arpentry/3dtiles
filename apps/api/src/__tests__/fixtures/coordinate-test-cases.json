@@ -1,0 +1,197 @@
+{
+  "coordinate_systems": {
+    "wgs84_geographic": {
+      "description": "WGS84 Geographic coordinates in decimal degrees",
+      "units": "degrees",
+      "crs": "EPSG:4326",
+      "format": "[longitude, latitude]"
+    },
+    "web_mercator": {
+      "description": "Web Mercator projection coordinates",
+      "units": "meters",
+      "crs": "EPSG:3857",
+      "format": "[x, y]"
+    },
+    "grid_space": {
+      "description": "Grid pixel coordinates (0 to tileSize+1)",
+      "units": "pixels",
+      "format": "[col, row]"
+    },
+    "world_space": {
+      "description": "3D world coordinates centered at tileset origin",
+      "units": "meters",
+      "format": "[x, y, z]"
+    },
+    "threejs_coordinates": {
+      "description": "Three.js coordinate system",
+      "units": "meters", 
+      "format": "[x, y, z] where x=easting, y=elevation, z=-northing"
+    }
+  },
+  "transformation_test_cases": {
+    "swiss_reference_points": {
+      "description": "Known Swiss coordinate reference points for validation",
+      "cases": [
+        {
+          "name": "Zurich Center",
+          "wgs84_deg": [8.5417, 47.3769],
+          "wgs84_rad": [0.14908, 0.82688],
+          "web_mercator": [950857.69, 6003812.20]
+        },
+        {
+          "name": "Bern Center", 
+          "wgs84_deg": [7.4474, 46.9480],
+          "wgs84_rad": [0.12998, 0.81940],
+          "web_mercator": [829040.78, 5933590.48]
+        },
+        {
+          "name": "Geneva Center",
+          "wgs84_deg": [6.1432, 46.2044],
+          "wgs84_rad": [0.10722, 0.80642],
+          "web_mercator": [683857.90, 5813165.19]
+        },
+        {
+          "name": "Basel Center",
+          "wgs84_deg": [7.5886, 47.5596],
+          "wgs84_rad": [0.13245, 0.83007],
+          "web_mercator": [844759.09, 6033898.21]
+        }
+      ]
+    },
+    "tile_coordinate_examples": {
+      "description": "Known tile coordinate transformations at different levels",
+      "global_bounds_web_mercator": [2485071.5, 1075268.5, 2513171.5, 1103368.5],
+      "tileset_center": [2499121.5, 1089318.5],
+      "cases": [
+        {
+          "level": 0,
+          "x": 0, 
+          "y": 0,
+          "expected_bounds_web_mercator": [2485071.5, 1075268.5, 2513171.5, 1103368.5],
+          "center_web_mercator": [2499121.5, 1089318.5]
+        },
+        {
+          "level": 1,
+          "x": 0,
+          "y": 0, 
+          "expected_bounds_web_mercator": [2485071.5, 1089318.5, 2499121.5, 1103368.5],
+          "center_web_mercator": [2492096.5, 1096343.5]
+        },
+        {
+          "level": 1,
+          "x": 1,
+          "y": 0,
+          "expected_bounds_web_mercator": [2499121.5, 1089318.5, 2513171.5, 1103368.5],
+          "center_web_mercator": [2506146.5, 1096343.5]
+        },
+        {
+          "level": 2,
+          "x": 0,
+          "y": 0,
+          "expected_bounds_web_mercator": [2485071.5, 1096343.5, 2492096.5, 1103368.5],
+          "center_web_mercator": [2488584.0, 1099856.0]
+        }
+      ]
+    },
+    "grid_to_world_transformations": {
+      "description": "Grid space to world space coordinate transformations",
+      "tile_size": 256,
+      "test_tile": {
+        "level": 1,
+        "x": 0,
+        "y": 0,
+        "bounds_web_mercator": [2485071.5, 1089318.5, 2499121.5, 1103368.5],
+        "tileset_center": [2499121.5, 1089318.5]
+      },
+      "cases": [
+        {
+          "name": "Grid origin (0,0)",
+          "grid_coordinates": [0, 0],
+          "expected_world_coordinates": [-14050.0, 0.0, -14050.0],
+          "notes": "Top-left corner of tile"
+        },
+        {
+          "name": "Grid center (128,128)",
+          "grid_coordinates": [128, 128],
+          "expected_world_coordinates": [-7025.0, 0.0, -7025.0],
+          "notes": "Center of tile"
+        },
+        {
+          "name": "Grid max (256,256)",
+          "grid_coordinates": [256, 256], 
+          "expected_world_coordinates": [0.0, 0.0, 0.0],
+          "notes": "Bottom-right corner of tile"
+        }
+      ]
+    },
+    "elevation_test_data": {
+      "description": "Known elevation values for coordinate testing",
+      "swiss_elevation_points": [
+        {
+          "location": "Lake Geneva",
+          "wgs84_deg": [6.1587, 46.2043],
+          "elevation_meters": 372
+        },
+        {
+          "location": "Matterhorn Peak",
+          "wgs84_deg": [7.6583, 45.9763],
+          "elevation_meters": 4478
+        },
+        {
+          "location": "Zurich Airport",
+          "wgs84_deg": [8.5622, 47.4647],
+          "elevation_meters": 432
+        },
+        {
+          "location": "Rhine Falls",
+          "wgs84_deg": [8.6150, 47.6775],
+          "elevation_meters": 373
+        }
+      ]
+    },
+    "coordinate_system_contracts": {
+      "raster_step": {
+        "input": "GeoTIFF URLs with global coverage",
+        "coordinate_system_in": "Various (determined by GeoTIFF metadata)",
+        "coordinate_system_out": "Grid space (0 to tileSize+1 pixels)",
+        "output": "Tile-specific elevation/texture data in grid space",
+        "key_transformations": [
+          "Web Mercator bounds → Grid pixel coordinates",
+          "GeoTIFF pixel values → Elevation meters",
+          "GeoTIFF pixel values → RGB texture values"
+        ]
+      },
+      "mesh_step": {
+        "input": "Grid-based elevation data (Float32Array)",
+        "coordinate_system_in": "Grid space (0 to tileSize pixels)",
+        "coordinate_system_out": "Three.js world coordinates",
+        "output": "Triangulated mesh with world coordinates",
+        "key_transformations": [
+          "Grid coordinates → Web Mercator coordinates",
+          "Web Mercator coordinates → World space coordinates",
+          "World space → Three.js coordinates (X=easting, Y=elevation, Z=-northing)",
+          "Martini adaptive triangulation"
+        ]
+      },
+      "gltf_step": {
+        "input": "Mesh geometry and texture",
+        "coordinate_system_in": "Three.js coordinates",
+        "coordinate_system_out": "Three.js coordinates (no transformation)",
+        "output": "Binary GLB file",
+        "key_transformations": [
+          "Three.js coordinates → glTF vertex buffers",
+          "Texture data → glTF material/image",
+          "Geometry + Material → Binary GLB format"
+        ]
+      }
+    }
+  },
+  "validation_tolerances": {
+    "coordinate_precision": {
+      "web_mercator_meters": 0.1,
+      "wgs84_degrees": 0.000001,
+      "grid_pixels": 0.5,
+      "elevation_meters": 0.01
+    }
+  }
+}
