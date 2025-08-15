@@ -58,11 +58,18 @@ function normalizeVector(normals: Float32Array, startIndex: number): void {
   const nx = normals[startIndex];
   const ny = normals[startIndex + 1];
   const nz = normals[startIndex + 2];
-  const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+  const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
   
-  normals[startIndex] = nx / len;
-  normals[startIndex + 1] = ny / len;
-  normals[startIndex + 2] = nz / len;
+  if (len === 0) {
+    // Handle degenerate case with default up vector
+    normals[startIndex] = 0;
+    normals[startIndex + 1] = 0;
+    normals[startIndex + 2] = 1;
+  } else {
+    normals[startIndex] = nx / len;
+    normals[startIndex + 1] = ny / len;
+    normals[startIndex + 2] = nz / len;
+  }
 }
 
 /**
@@ -207,8 +214,8 @@ export function mapCoordinates(
   const tileHeight = clampedBbox[3] - clampedBbox[1];
   const gridSize = tileSize + 1;
 
-  const geometryWidth = tileWidth * tileSize / gridSize;
-  const geometryHeight = tileHeight * tileSize / gridSize;
+  const geometryWidth = tileWidth;
+  const geometryHeight = tileHeight;
 
   let next = 0;
   let minElevation = Infinity;
