@@ -17,9 +17,9 @@ export type Coordinate = [number, number];
 
 /** Tile coordinates in a quadtree structure */
 export interface TileCoordinates {
-  /** Tile column index (0 ≤ x < 2^level) */
+  /** Tile column index (0 ≤ x < 2^level), X=0 at left (west) */
   x: number;
-  /** Tile row index (0 ≤ y < 2^level) */
+  /** Tile row index (0 ≤ y < 2^level), Y=0 at top (north) following TMS convention */
   y: number;
 }
 
@@ -114,14 +114,14 @@ export function tileToRegion(
  * Find tile coordinates that contain a given geographic point
  * 
  * Converts a longitude/latitude point to tile coordinates within
- * a quadtree at the specified level. Useful for spatial indexing
- * and tile-based data queries.
+ * a quadtree at the specified level. Uses top-down Y coordinates
+ * (Y=0 at north) following TMS convention.
  * 
  * @param root - The bounding region of the root tile
  * @param level - Quadtree level (0 = root)
  * @param lon - Longitude in radians (WGS84)
  * @param lat - Latitude in radians (WGS84)
- * @returns Tile coordinates containing the point
+ * @returns Tile coordinates containing the point (X=0 at west, Y=0 at north)
  * @throws RangeError if the point lies outside the root region
  */
 export function lonLatToTile(
@@ -155,12 +155,12 @@ export function lonLatToTile(
  * 
  * Creates square tiles in Web Mercator projection for consistent pixel density,
  * then converts the bounds to WGS84 radians for 3D Tiles compatibility.
- * This approach ensures proper tile pyramid geometry.
+ * Uses top-down Y coordinates (Y=0 at top) following TMS/web mapping standards.
  * 
  * @param rootBounds - Full-extent bounds in EPSG:3857 [minX, minY, maxX, maxY]
  * @param level - 0-based quadtree level
- * @param x - Tile column index (0 ≤ x < 2^level)
- * @param y - Tile row index (0 ≤ y < 2^level)
+ * @param x - Tile column index (0 ≤ x < 2^level), X=0 at west (left)
+ * @param y - Tile row index (0 ≤ y < 2^level), Y=0 at north (top)
  * @returns Bounding region in WGS84 radians for 3D Tiles compatibility
  */
 export function tileToRegionSquare(
@@ -180,8 +180,9 @@ export function tileToRegionSquare(
   // Calculate Web Mercator bounds for this specific tile
   const minX = rootBounds[0] + tileWidth * x;
   const maxX = minX + tileWidth;
-  const minY = rootBounds[1] + tileHeight * y;
-  const maxY = minY + tileHeight;
+  // Use top-down Y coordinates (Y=0 at top, like TMS/web mapping standards)
+  const maxY = rootBounds[3] - tileHeight * y;
+  const minY = maxY - tileHeight;
 
   // Convert Web Mercator corners to WGS84 degrees
   const [westDeg, southDeg] = EPSG3857toWGS84(minX, minY);
