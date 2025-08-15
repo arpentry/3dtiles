@@ -72,7 +72,9 @@ export default function Tiles3D({ url }: { url: string }) {
       colorMode: enableLODColoring ? 9 : 0, // 9 = CUSTOM_COLOR, 0 = NONE
       customColorCallback: enableLODColoring ? (tile: any, child: any) => {
         const colorIndex = tile.__depth % LOD_COLORS.length;
-        child.material.color.copy(LOD_COLORS[colorIndex]);
+        if (child && child.material && child.material.color) {
+          child.material.color.copy(LOD_COLORS[colorIndex]);
+        }
       } : undefined,
       enabled: true,
     });
