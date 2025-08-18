@@ -214,8 +214,8 @@ export function mapCoordinates(
   const tileHeight = clampedBbox[3] - clampedBbox[1];
   const gridSize = tileSize + 1;
 
-  const geometryWidth = tileWidth;
-  const geometryHeight = tileHeight;
+  const geometryWidth = tileWidth * tileSize / gridSize;
+  const geometryHeight = tileHeight * tileSize / gridSize;
 
   let next = 0;
   let minElevation = Infinity;
