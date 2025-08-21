@@ -66,6 +66,7 @@ Ensure you have the following tools installed:
    ```
    ELEVATION_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissalti3d/swissalti3d_web_mercator.tif
    TEXTURE_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissimage-dop10/swissimage_web_mercator.tif
+   TILE_CACHE_DURATION=60
    ```
 
    Create `apps/web/.env`:
@@ -79,6 +80,7 @@ Ensure you have the following tools installed:
    ```
    ELEVATION_DATA_URL=./downloads_swissalti3d/swissalti3d_web_mercator.tif
    TEXTURE_DATA_URL=./downloads_swissimage-dop10/swissimage_web_mercator.tif
+   TILE_CACHE_DURATION=60
    ```
 
    Create `apps/web/.env`:
@@ -116,6 +118,16 @@ The system works by:
 2. **Tile Generation**: API dynamically generates 3D tiles from elevation/texture data
 3. **Level-of-Detail**: Quadtree structure provides adaptive mesh resolution
 4. **Rendering**: Three.js renders tiles with proper LOD management
+
+### Cache Configuration
+
+The API supports configurable cache duration for tile responses via the `TILE_CACHE_DURATION` environment variable:
+
+- **Development**: Set to `60` (1 minute) for fast iteration and testing
+- **Production**: Set to `3600` (1 hour) for optimal performance
+- **Default**: Falls back to 3600 seconds if not specified
+
+This configuration helps balance development speed with production performance by allowing shorter cache durations during development.
 
 ### Available Commands
 
@@ -155,7 +167,8 @@ Configure in `apps/api/wrangler.json`:
 {
   "vars": {
     "ELEVATION_DATA_URL": "https://your-cdn.com/swissalti3d_web_mercator.tif",
-    "TEXTURE_DATA_URL": "https://your-cdn.com/swissimage_web_mercator.tif"
+    "TEXTURE_DATA_URL": "https://your-cdn.com/swissimage_web_mercator.tif",
+    "TILE_CACHE_DURATION": "3600"
   }
 }
 ```
