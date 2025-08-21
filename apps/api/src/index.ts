@@ -1,6 +1,5 @@
 import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
-import { cache } from 'hono/cache';
 import {
   readElevationDataFromGeoTiff,
   readTextureDataFromGeoTiff,
@@ -30,6 +29,7 @@ import {
 export type Bindings = {
   ELEVATION_DATA_URL: string;
   TEXTURE_DATA_URL: string;
+  TILE_CACHE_DURATION?: string;
 };
 
 // Memoized metadata reader for performance optimization
@@ -144,11 +144,11 @@ app.get('/tileset.json', async (c: Context) => {
  */
 app.get(
   '/tiles/:level/:x/:y/tile.glb',
-  cache({
-    cacheName: 'tiles',
-    cacheControl: `max-age=${TILE_CACHE_DURATION}`,
-  }),
   async (c: Context) => {
+    // Set cache headers based on environment variable or default
+    const cacheDuration = c.env.TILE_CACHE_DURATION || TILE_CACHE_DURATION.toString();
+    c.header('Cache-Control', `max-age=${cacheDuration}`);
+    c.header('CDN-Cache-Control', `max-age=${cacheDuration}`);
     // Validate and parse tile coordinates
     const validation = validateTileCoordinates(
       c.req.param('level'),

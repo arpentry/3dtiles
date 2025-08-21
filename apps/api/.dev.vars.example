@@ -1,0 +1,10 @@
+# Development environment variables for Cloudflare Workers
+# Copy this file to .dev.vars and adjust values as needed
+
+# Cache duration for tile responses in seconds
+# Development: Use short cache duration for faster iteration
+TILE_CACHE_DURATION=60
+
+# Data URLs (override if using different sources for development)
+# ELEVATION_DATA_URL=your-elevation-data-url
+# TEXTURE_DATA_URL=your-texture-data-url
