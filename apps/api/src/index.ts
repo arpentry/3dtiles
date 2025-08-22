@@ -30,6 +30,7 @@ import {
 export type Bindings = {
   ELEVATION_DATA_URL: string;
   TEXTURE_DATA_URL: string;
+  TILE_CACHE_DURATION?: string;
 };
 
 // Memoized metadata reader for performance optimization
@@ -133,6 +134,17 @@ app.get('/tileset.json', async (c: Context) => {
 });
 
 /**
+ * Cache middleware for tiles with configurable duration
+ */
+const tileCache = async (c: Context, next: () => Promise<void>) => {
+  const cacheDuration = c.env.TILE_CACHE_DURATION || TILE_CACHE_DURATION.toString();
+  return cache({
+    cacheName: 'tiles',
+    cacheControl: `max-age=${cacheDuration}`,
+  })(c, next);
+};
+
+/**
  * GLB tile endpoint - generates individual terrain tiles
  * 
  * Processes elevation and texture data to generate a single 3D Tiles GLB file
@@ -144,10 +156,7 @@ app.get('/tileset.json', async (c: Context) => {
  */
 app.get(
   '/tiles/:level/:x/:y/tile.glb',
-  cache({
-    cacheName: 'tiles',
-    cacheControl: `max-age=${TILE_CACHE_DURATION}`,
-  }),
+  tileCache,
   async (c: Context) => {
     // Validate and parse tile coordinates
     const validation = validateTileCoordinates(
