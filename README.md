@@ -124,8 +124,8 @@ The system works by:
 The API supports configurable cache duration for tile responses via the `TILE_CACHE_DURATION` environment variable:
 
 - **Development**: Set to `60` (1 minute) for fast iteration and testing
-- **Production**: Set to `3600` (1 hour) for optimal performance
-- **Default**: Falls back to 3600 seconds if not specified
+- **Production**: Set to `604800` (1 week) for optimal performance
+- **Default**: Falls back to 604800 seconds if not specified
 
 This configuration helps balance development speed with production performance by allowing shorter cache durations during development.
 
@@ -168,7 +168,7 @@ Configure in `apps/api/wrangler.json`:
   "vars": {
     "ELEVATION_DATA_URL": "https://your-cdn.com/swissalti3d_web_mercator.tif",
     "TEXTURE_DATA_URL": "https://your-cdn.com/swissimage_web_mercator.tif",
-    "TILE_CACHE_DURATION": "3600"
+    "TILE_CACHE_DURATION": "604800"
   }
 }
 ```

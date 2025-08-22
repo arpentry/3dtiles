@@ -75,7 +75,7 @@ export const TILE_SIZE = 512;
 export const QUADTREE_MAX_LEVEL = 5;
 
 /** Cache duration for tile responses in seconds */
-export const TILE_CACHE_DURATION = 3600;
+export const TILE_CACHE_DURATION = 604800;
 
 // ============================================================================
 // DATA PROCESSING CONSTANTS
