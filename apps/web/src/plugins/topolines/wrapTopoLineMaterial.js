@@ -325,7 +325,7 @@ export function wrapTopoLineMaterial(material, previousOnBeforeCompile) {
 
 						mat4 invFrame = inverse( frame );
 						vec3 localPosition = ( invFrame * vec4( wPosition, 1 ) ).xyz;
-						pos = vec3( localPosition.xy * 0.1, localPosition.z );
+						pos = vec3( localPosition.xz * 0.1, localPosition.y );
 
 					#endif
 
