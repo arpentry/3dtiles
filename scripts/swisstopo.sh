@@ -19,6 +19,48 @@ check_dependencies() {
     echo "Dependencies: OK"
 }
 
+# Usage information
+print_usage() {
+    echo "Usage: $0 [options]"
+    echo ""
+    echo "Options:"
+    echo "  --csv-swissalti3d <path>     Use a pre-downloaded CSV for swissalti3d"
+    echo "  --csv-swissimage-dop10 <path> Use a pre-downloaded CSV for swissimage-dop10"
+    echo "  -h, --help                    Show this help and exit"
+}
+
+# Parse CLI arguments
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --csv-swissalti3d=*)
+                CSV_swissalti3d="${1#*=}"
+                ;;
+            --csv-swissalti3d)
+                shift
+                CSV_swissalti3d="$1"
+                ;;
+            --csv-swissimage-dop10=*)
+                CSV_swissimage_dop10="${1#*=}"
+                ;;
+            --csv-swissimage-dop10)
+                shift
+                CSV_swissimage_dop10="$1"
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                print_usage
+                exit 2
+                ;;
+        esac
+        shift
+    done
+}
+
 # Resolution and bounding box settings
 SWISSALTI3D_RESOLUTION=2.0
 SWISSIMAGE_RESOLUTION=2.0
@@ -71,17 +113,27 @@ process_data_source() {
     local download_dir="downloads_$name"
     mkdir -p "$download_dir"
     
-    # Download and parse API response
-    local json_response=$(curl -L -s "$url")
-    local href=$(echo "$json_response" | jq -r '.href')
-    
-    # Download CSV file
+    # Optional: use a pre-downloaded CSV if provided via env var CSV_<name>
+    # Example: CSV_swissalti3d=/path/to/files.csv
+    local csv_override_var="CSV_${name//-/_}"
+    local csv_override="${!csv_override_var}"
     local csv_file="$download_dir/files.csv"
-    download_file "$href" "$csv_file"
+
+    if [ -n "$csv_override" ] && [ -f "$csv_override" ]; then
+        echo "Using provided CSV: $csv_override"
+        cp "$csv_override" "$csv_file"
+    else
+        # Download and parse API response
+        local json_response=$(curl -L -s "$url")
+        local href=$(echo "$json_response" | jq -r '.href')
+
+        # Download CSV file
+        download_file "$href" "$csv_file"
+    fi
     
     # Extract URLs from CSV
     local urls_file="$download_dir/urls.txt"
-    tail -n +2 "$csv_file" | cut -d',' -f1 | sed 's/^"//;s/"$//' > "$urls_file"
+    tail -n +2 "$csv_file" | tr -d '\r' | cut -d',' -f1 | sed 's/^"//;s/"$//' > "$urls_file"
     
     # Download all .tif files
     download_tif_files "$urls_file" "$download_dir"
@@ -162,6 +214,7 @@ upload_files() {
 
 # Main execution function
 main() {
+    parse_args "$@"
     check_dependencies
     
     # Download data
