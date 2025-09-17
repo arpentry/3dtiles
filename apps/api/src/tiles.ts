@@ -311,8 +311,14 @@ function calculateGeometricError(
  * @param y - Tile row index
  * @returns URI path to the tile's GLB content
  */
-function generateContentUri(level: number, x: number, y: number): string {
-  return `/tiles/${level}/${x}/${y}/tile.glb`;
+function generateContentUri(
+  level: number,
+  x: number,
+  y: number,
+  version?: string,
+): string {
+  const base = `/tiles/${level}/${x}/${y}/tile.glb`;
+  return version ? `${base}?version=${encodeURIComponent(version)}` : base;
 }
 
 /**
@@ -450,6 +456,7 @@ function createQuadtree(
   maxLevel: number,
   method: GeometricErrorMethod = GeometricErrorMethod.ELEVATION_BASED,
   rootBounds?: Bounds,
+  version?: string,
 ): Tile {
   const elevationRange = maxHeight - minHeight;
   const geometricError = calculateGeometricError(
@@ -458,7 +465,7 @@ function createQuadtree(
     method,
     rootBounds,
   );
-  const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
+  const contentUri = generateContentUri(level, quadrant.x, quadrant.y, version);
 
   // Create children if we haven't reached max level
   const children: Tile[] = [];
@@ -484,6 +491,7 @@ function createQuadtree(
         maxLevel,
         method,
         rootBounds,
+        version,
       );
       children.push(childTile);
     }
@@ -570,6 +578,7 @@ export function createTileset(
   maxHeight: number,
   maxLevel: number,
   method: GeometricErrorMethod = GeometricErrorMethod.ELEVATION_BASED,
+  version?: string,
 ): Tileset {
   const rootQuadrant: Quadrant = {
     x: 0,
@@ -598,6 +607,7 @@ export function createTileset(
       maxLevel,
       method,
       bounds,
+      version,
     ),
   };
 }

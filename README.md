@@ -19,6 +19,10 @@ This project uses Swiss geodata as an example dataset due to its high quality an
 
 The default region showcased is the Thun Lake area, including the Lauterbrunnen Valley and Jungfrau Massif. This spectacular Alpine landscape is perfect for demonstrating 3D terrain capabilities.
 
+#### <a id="tileset-version"></a> current tileset version :
+
+`v1`
+
 ## Quick Start
 
 ### Prerequisites
@@ -30,6 +34,7 @@ The default region showcased is the Thun Lake area, including the Lauterbrunnen 
 ### System Dependencies
 
 Ensure you have the following tools installed:
+
 - `curl` and `jq` for data download and processing
 - `gdal` for geospatial data transformation
 - `awscli` for cloud storage (optional)
@@ -37,6 +42,7 @@ Ensure you have the following tools installed:
 ### Installation & Setup
 
 1. **Clone and install dependencies**
+
    ```bash
    git clone https://github.com/arpentry/3dtiles.git
    cd 3dtiles
@@ -44,6 +50,7 @@ Ensure you have the following tools installed:
    ```
 
 2. **Download and process demo geodata (Optional)**
+
    ```bash
    bash scripts/swisstopo.sh
    ```
@@ -63,6 +70,7 @@ Ensure you have the following tools installed:
    #### Option A: Use hosted demo data via Cloudflare API (recommended for quick development)
 
    Create `apps/api/.dev.vars`:
+
    ```
    ELEVATION_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissalti3d/swissalti3d_web_mercator.tif
    TEXTURE_DATA_URL=https://pub-201a95028ab1488d96d15b38f33f28b2.r2.dev/swissimage-dop10/swissimage_web_mercator.tif
@@ -70,13 +78,18 @@ Ensure you have the following tools installed:
    ```
 
    Create `apps/web/.env`:
+
    ```
    # Use production tileset
-   VITE_TILESET_URL=https://3dtiles-api.arpentry.com/tileset.json
+   VITE_TILESET_URL=https://3dtiles-api.arpentry.com/tileset.json?version={CURRENT_TILESET_VERSION}
    ```
 
+   [tileset version](#tileset-version)
+
    #### Option B: Use locally processed data
+
    After running the swisstopo script, create `apps/api/.dev.vars`:
+
    ```
    ELEVATION_DATA_URL=./downloads_swissalti3d/swissalti3d_web_mercator.tif
    TEXTURE_DATA_URL=./downloads_swissimage-dop10/swissimage_web_mercator.tif
@@ -84,12 +97,16 @@ Ensure you have the following tools installed:
    ```
 
    Create `apps/web/.env`:
+
    ```
    # For local development
-   VITE_TILESET_URL=http://localhost:8787
+   VITE_TILESET_URL=http://localhost:8787?version={CURRENT_TILESET_VERSION}
    ```
 
+   [tileset version](#tileset-version)
+
 4. **Start development servers**
+
    ```bash
    pnpm dev
    ```
@@ -114,6 +131,7 @@ User Request → React 3D Viewer → Cloudflare Worker API → GeoTIFF Processin
 ```
 
 The system works by:
+
 1. **Data Processing**: Swiss geodata is processed into Web Mercator GeoTIFF files
 2. **Tile Generation**: API dynamically generates 3D tiles from elevation/texture data
 3. **Level-of-Detail**: Quadtree structure provides adaptive mesh resolution
@@ -152,7 +170,9 @@ pnpm lint:fix     # Fix code style issues
 ### Production Environment Variables
 
 #### Data Upload to R2 (Optional)
+
 Create `scripts/.env` for automated cloud upload:
+
 ```bash
 R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
@@ -162,7 +182,9 @@ R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
 ```
 
 #### API (Cloudflare Worker)
+
 Configure in `apps/api/wrangler.json`:
+
 ```json
 {
   "vars": {
@@ -174,12 +196,17 @@ Configure in `apps/api/wrangler.json`:
 ```
 
 #### Web App (Cloudflare Pages)
+
 Set in Cloudflare dashboard under Settings → Environment Variables:
+
 ```bash
-VITE_TILESET_URL=https://your-api-domain.com/tileset.json
+VITE_TILESET_URL=https://your-api-domain.com/tileset.json?version={current_version_see_above}
 ```
 
+[tileset version](#tileset-version)
+
 ### Deploy Commands
+
 ```bash
 pnpm deploy  # Deploy both API and Web applications
 ```

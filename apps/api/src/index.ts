@@ -136,6 +136,7 @@ app.use(
 app.get('/tileset.json', async (c: Context) => {
   try {
     const method = parseGeometricErrorMethod(c.req.query('method'));
+    const version = c.req.query('version') || undefined;
     const { tilesetBounds: globalBounds, tilesetCenter } =
       await memoizedTiffMetadata(c.env.ELEVATION_DATA_URL);
 
@@ -146,6 +147,7 @@ app.get('/tileset.json', async (c: Context) => {
       MAX_ELEVATION,
       QUADTREE_MAX_LEVEL,
       method,
+      version,
     );
 
     return c.json(tileset);
