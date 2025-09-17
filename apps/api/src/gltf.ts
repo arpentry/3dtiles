@@ -1,4 +1,11 @@
-import { Document, NodeIO, TextureInfo, Accessor, Buffer, Material } from '@gltf-transform/core';
+import {
+  Document,
+  NodeIO,
+  TextureInfo,
+  Accessor,
+  Buffer,
+  Material,
+} from '@gltf-transform/core';
 import {
   DEFAULT_BASE_COLOR,
   DEFAULT_ROUGHNESS_FACTOR,
@@ -31,13 +38,17 @@ export interface GltfMeshParams {
 
 /**
  * Create vertex position accessor for glTF mesh
- * 
+ *
  * @param doc - glTF document
  * @param buffer - Buffer to store data
  * @param positions - Vertex positions array
  * @returns Position accessor
  */
-function createPositionAccessor(doc: Document, buffer: Buffer, positions: number[]): Accessor {
+function createPositionAccessor(
+  doc: Document,
+  buffer: Buffer,
+  positions: number[],
+): Accessor {
   return doc
     .createAccessor()
     .setType('VEC3')
@@ -47,13 +58,17 @@ function createPositionAccessor(doc: Document, buffer: Buffer, positions: number
 
 /**
  * Create UV texture coordinate accessor for glTF mesh
- * 
+ *
  * @param doc - glTF document
  * @param buffer - Buffer to store data
  * @param uvs - UV coordinates array
  * @returns UV accessor
  */
-function createUvAccessor(doc: Document, buffer: Buffer, uvs: number[]): Accessor {
+function createUvAccessor(
+  doc: Document,
+  buffer: Buffer,
+  uvs: number[],
+): Accessor {
   return doc
     .createAccessor()
     .setType('VEC2')
@@ -63,16 +78,20 @@ function createUvAccessor(doc: Document, buffer: Buffer, uvs: number[]): Accesso
 
 /**
  * Create triangle index accessor for glTF mesh
- * 
+ *
  * Automatically chooses between 16-bit and 32-bit indices based on
  * the number of indices to optimize file size and compatibility.
- * 
+ *
  * @param doc - glTF document
  * @param buffer - Buffer to store data
  * @param indices - Triangle indices array
  * @returns Index accessor
  */
-function createIndexAccessor(doc: Document, buffer: Buffer, indices: number[]): Accessor {
+function createIndexAccessor(
+  doc: Document,
+  buffer: Buffer,
+  indices: number[],
+): Accessor {
   return doc
     .createAccessor()
     .setType('SCALAR')
@@ -86,13 +105,17 @@ function createIndexAccessor(doc: Document, buffer: Buffer, indices: number[]): 
 
 /**
  * Create vertex normal accessor for glTF mesh
- * 
+ *
  * @param doc - glTF document
  * @param buffer - Buffer to store data
  * @param normals - Vertex normals array
  * @returns Normal accessor or undefined if normals are empty
  */
-function createNormalAccessor(doc: Document, buffer: Buffer, normals: number[]): Accessor | undefined {
+function createNormalAccessor(
+  doc: Document,
+  buffer: Buffer,
+  normals: number[],
+): Accessor | undefined {
   if (!normals || normals.length === 0) {
     return undefined;
   }
@@ -106,7 +129,7 @@ function createNormalAccessor(doc: Document, buffer: Buffer, normals: number[]):
 
 /**
  * Create PBR material optimized for terrain rendering
- * 
+ *
  * @param doc - glTF document
  * @param texture - Optional PNG texture data
  * @returns Configured PBR material
@@ -124,9 +147,9 @@ function createTerrainMaterial(doc: Document, texture?: Uint8Array): Material {
       .createTexture()
       .setImage(texture)
       .setMimeType(PNG_MIME_TYPE);
-    
+
     material = material.setBaseColorTexture(gltfTexture);
-    
+
     // Configure texture wrapping to prevent edge artifacts
     const textureInfo = material.getBaseColorTextureInfo();
     if (textureInfo) {
@@ -144,11 +167,11 @@ function createTerrainMaterial(doc: Document, texture?: Uint8Array): Material {
 
 /**
  * Create a complete glTF document from mesh geometry data
- * 
+ *
  * Generates a GLB (binary glTF) file containing terrain mesh data with
  * optional texture and normal information. The output is optimized for
  * 3D Tiles usage with proper PBR material configuration for terrain rendering.
- * 
+ *
  * @param positions - 3D vertex positions in world coordinates
  * @param uvs - UV texture coordinates for each vertex
  * @param indices - Triangle vertex indices
@@ -170,7 +193,9 @@ export async function createGltfDocument(
   const positionAccessor = createPositionAccessor(doc, buffer, positions);
   const uvAccessor = createUvAccessor(doc, buffer, uvs);
   const indexAccessor = createIndexAccessor(doc, buffer, indices);
-  const normalAccessor = normals ? createNormalAccessor(doc, buffer, normals) : undefined;
+  const normalAccessor = normals
+    ? createNormalAccessor(doc, buffer, normals)
+    : undefined;
 
   // Create terrain-optimized PBR material
   const material = createTerrainMaterial(doc, texture);

@@ -12,9 +12,20 @@
     "lint:fix": "pnpm --parallel lint:fix",
     "test": "pnpm --parallel test",
     "test:run": "pnpm --parallel test:run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "format": "prettier . --write --ignore-unknown",
+    "format:check": "prettier . --check --ignore-unknown"
   },
-  "keywords": ["3d", "tiles", "3d-tiles", "3d-tiles-renderer", "cesium", "three.js", "webgl", "r3f"],
+  "keywords": [
+    "3d",
+    "tiles",
+    "3d-tiles",
+    "3d-tiles-renderer",
+    "cesium",
+    "three.js",
+    "webgl",
+    "r3f"
+  ],
   "author": "Arpentry Team",
   "license": "MIT",
   "packageManager": "pnpm@10.13.1",
@@ -25,6 +36,7 @@
     "@vitest/ui": "^3.2.4",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
     "vitest": "^3.2.4"
   }
 }

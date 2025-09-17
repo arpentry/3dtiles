@@ -69,10 +69,18 @@ interface Quadrant {
 export interface BoundingVolume {
   /** 12-element array defining center and half-axes of oriented bounding box */
   box: [
-    number, number, number, // center (x, y, z)
-    number, number, number, // x-axis half-extents (x, y, z)
-    number, number, number, // y-axis half-extents (x, y, z) 
-    number, number, number  // z-axis half-extents (x, y, z)
+    number,
+    number,
+    number, // center (x, y, z)
+    number,
+    number,
+    number, // x-axis half-extents (x, y, z)
+    number,
+    number,
+    number, // y-axis half-extents (x, y, z)
+    number,
+    number,
+    number, // z-axis half-extents (x, y, z)
   ];
 }
 
@@ -119,19 +127,24 @@ export enum GeometricErrorMethod {
   RESOLUTION_BASED = 'resolution-based',
   ELEVATION_BASED = 'elevation-based',
   DIAGONAL_BASED = 'diagonal-based',
-  SSE_BASED = 'sse-based'
+  SSE_BASED = 'sse-based',
 }
 
 /** Default geometric error calculation method */
-export const DEFAULT_GEOMETRIC_ERROR_METHOD = GeometricErrorMethod.RESOLUTION_BASED;
+export const DEFAULT_GEOMETRIC_ERROR_METHOD =
+  GeometricErrorMethod.RESOLUTION_BASED;
 
 /**
  * Type guard to validate geometric error method string values
  * @param value - String value to validate
  * @returns True if value is a valid GeometricErrorMethod
  */
-export function isValidGeometricErrorMethod(value: string): value is GeometricErrorMethod {
-  return Object.values(GeometricErrorMethod).includes(value as GeometricErrorMethod);
+export function isValidGeometricErrorMethod(
+  value: string,
+): value is GeometricErrorMethod {
+  return Object.values(GeometricErrorMethod).includes(
+    value as GeometricErrorMethod,
+  );
 }
 
 /**
@@ -139,7 +152,9 @@ export function isValidGeometricErrorMethod(value: string): value is GeometricEr
  * @param value - String value to parse (from query parameter)
  * @returns Valid GeometricErrorMethod, defaults to ELEVATION_BASED if invalid/undefined
  */
-export function parseGeometricErrorMethod(value: string | undefined): GeometricErrorMethod {
+export function parseGeometricErrorMethod(
+  value: string | undefined,
+): GeometricErrorMethod {
   if (value && isValidGeometricErrorMethod(value)) {
     return value;
   }
@@ -161,9 +176,15 @@ export function parseGeometricErrorMethod(value: string | undefined): GeometricE
  * @param elevationRange - Total elevation range (maxHeight - minHeight) in meters
  * @returns Geometric error threshold for screen-space error calculations
  */
-function calculateElevationBasedError(level: number, elevationRange: number): number {
+function calculateElevationBasedError(
+  level: number,
+  elevationRange: number,
+): number {
   const rootError = elevationRange * ELEVATION_ERROR_FACTOR;
-  return Math.max(MIN_GEOMETRIC_ERROR, rootError / Math.pow(QUAD_MULTIPLIER, level));
+  return Math.max(
+    MIN_GEOMETRIC_ERROR,
+    rootError / Math.pow(QUAD_MULTIPLIER, level),
+  );
 }
 
 /**
@@ -178,7 +199,10 @@ function calculateElevationBasedError(level: number, elevationRange: number): nu
  */
 function calculateResolutionBasedError(level: number): number {
   const rootError = DEM_RESOLUTION * RESOLUTION_SCALE_FACTOR;
-  return Math.max(MIN_GEOMETRIC_ERROR, rootError / Math.pow(QUAD_MULTIPLIER, level));
+  return Math.max(
+    MIN_GEOMETRIC_ERROR,
+    rootError / Math.pow(QUAD_MULTIPLIER, level),
+  );
 }
 
 /**
@@ -196,13 +220,13 @@ function calculateDiagonalBasedError(level: number, bounds: Bounds): number {
   // Calculate tile dimensions at this level
   const tileWidth = (bounds[2] - bounds[0]) / Math.pow(QUAD_MULTIPLIER, level);
   const tileHeight = (bounds[3] - bounds[1]) / Math.pow(QUAD_MULTIPLIER, level);
-  
+
   // Calculate planar diagonal using Pythagorean theorem
   const diagonal = Math.hypot(tileWidth, tileHeight);
-  
+
   // Apply half-diagonal heuristic with scale factor
   const geometricError = DIAGONAL_SCALE_FACTOR * 0.5 * diagonal;
-  
+
   return Math.max(MIN_GEOMETRIC_ERROR, geometricError);
 }
 
@@ -214,7 +238,7 @@ function calculateDiagonalBasedError(level: number, bounds: Bounds): number {
  * field of view, and viewport characteristics.
  *
  * Formula: geometricError ≈ SSE_target * (2 * d * tan(fov/2)) / viewportHeight
- * 
+ *
  * The method scales the root geometric error by level using the standard 1/2^level
  * relationship to maintain consistent refinement behavior across the quadtree.
  *
@@ -224,13 +248,16 @@ function calculateDiagonalBasedError(level: number, bounds: Bounds): number {
 function calculateSSEBasedError(level: number): number {
   // Calculate root geometric error using SSE formula
   // geometricError = SSE_target * (2 * distance * tan(fov/2)) / viewportHeight
-  const rootGeometricError = SSE_TARGET_PIXELS * 
-    (2 * SSE_REPRESENTATIVE_DISTANCE * Math.tan(SSE_DEFAULT_FOV_RADIANS / 2)) / 
+  const rootGeometricError =
+    (SSE_TARGET_PIXELS *
+      (2 *
+        SSE_REPRESENTATIVE_DISTANCE *
+        Math.tan(SSE_DEFAULT_FOV_RADIANS / 2))) /
     SSE_DEFAULT_VIEWPORT_HEIGHT;
-  
+
   // Scale by level using standard quadtree relationship
   const geometricError = rootGeometricError / Math.pow(QUAD_MULTIPLIER, level);
-  
+
   return Math.max(MIN_GEOMETRIC_ERROR, geometricError);
 }
 
@@ -253,7 +280,7 @@ function calculateGeometricError(
   level: number,
   elevationRange: number,
   method: GeometricErrorMethod = GeometricErrorMethod.RESOLUTION_BASED,
-  bounds?: Bounds
+  bounds?: Bounds,
 ): number {
   switch (method) {
     case GeometricErrorMethod.RESOLUTION_BASED:
@@ -262,7 +289,9 @@ function calculateGeometricError(
       return calculateElevationBasedError(level, elevationRange);
     case GeometricErrorMethod.DIAGONAL_BASED:
       if (!bounds) {
-        throw new Error('Bounds parameter is required for diagonal-based geometric error calculation');
+        throw new Error(
+          'Bounds parameter is required for diagonal-based geometric error calculation',
+        );
       }
       return calculateDiagonalBasedError(level, bounds);
     case GeometricErrorMethod.SSE_BASED:
@@ -276,9 +305,9 @@ function calculateGeometricError(
 
 /**
  * Generate content URI for a tile at given coordinates
- * 
+ *
  * @param level - Quadtree level
- * @param x - Tile column index  
+ * @param x - Tile column index
  * @param y - Tile row index
  * @returns URI path to the tile's GLB content
  */
@@ -288,9 +317,9 @@ function generateContentUri(level: number, x: number, y: number): string {
 
 /**
  * Create quadrant subdivision data for a tile
- * 
+ *
  * @param x - Parent tile column index
- * @param y - Parent tile row index  
+ * @param y - Parent tile row index
  * @param minX - Parent tile minimum X bound
  * @param minY - Parent tile minimum Y bound
  * @param maxX - Parent tile maximum X bound
@@ -307,12 +336,40 @@ function createQuadrants(
 ): Quadrant[] {
   const midX = (minX + maxX) / 2;
   const midY = (minY + maxY) / 2;
-  
+
   return [
-    { x: x * QUAD_MULTIPLIER, y: y * QUAD_MULTIPLIER, minX, minY, maxX: midX, maxY: midY }, // SW
-    { x: x * QUAD_MULTIPLIER + 1, y: y * QUAD_MULTIPLIER, minX: midX, minY, maxX, maxY: midY }, // SE
-    { x: x * QUAD_MULTIPLIER, y: y * QUAD_MULTIPLIER + 1, minX, minY: midY, maxX: midX, maxY }, // NW
-    { x: x * QUAD_MULTIPLIER + 1, y: y * QUAD_MULTIPLIER + 1, minX: midX, minY: midY, maxX, maxY }, // NE
+    {
+      x: x * QUAD_MULTIPLIER,
+      y: y * QUAD_MULTIPLIER,
+      minX,
+      minY,
+      maxX: midX,
+      maxY: midY,
+    }, // SW
+    {
+      x: x * QUAD_MULTIPLIER + 1,
+      y: y * QUAD_MULTIPLIER,
+      minX: midX,
+      minY,
+      maxX,
+      maxY: midY,
+    }, // SE
+    {
+      x: x * QUAD_MULTIPLIER,
+      y: y * QUAD_MULTIPLIER + 1,
+      minX,
+      minY: midY,
+      maxX: midX,
+      maxY,
+    }, // NW
+    {
+      x: x * QUAD_MULTIPLIER + 1,
+      y: y * QUAD_MULTIPLIER + 1,
+      minX: midX,
+      minY: midY,
+      maxX,
+      maxY,
+    }, // NE
   ];
 }
 
@@ -395,20 +452,25 @@ function createQuadtree(
   rootBounds?: Bounds,
 ): Tile {
   const elevationRange = maxHeight - minHeight;
-  const geometricError = calculateGeometricError(level, elevationRange, method, rootBounds);
+  const geometricError = calculateGeometricError(
+    level,
+    elevationRange,
+    method,
+    rootBounds,
+  );
   const contentUri = generateContentUri(level, quadrant.x, quadrant.y);
-  
+
   // Create children if we haven't reached max level
   const children: Tile[] = [];
   if (level < maxLevel) {
     const childLevel = level + 1;
     const childQuadrants = createQuadrants(
-      quadrant.x, 
-      quadrant.y, 
-      quadrant.minX, 
-      quadrant.minY, 
-      quadrant.maxX, 
-      quadrant.maxY
+      quadrant.x,
+      quadrant.y,
+      quadrant.minX,
+      quadrant.minY,
+      quadrant.maxX,
+      quadrant.maxY,
     );
 
     for (const childQuadrant of childQuadrants) {
@@ -448,13 +510,13 @@ function createQuadtree(
 
 /**
  * Calculate tile bounds in both geographic and Web Mercator coordinates
- * 
- * Converts from quadtree tile coordinates to both geographic (degrees) and 
+ *
+ * Converts from quadtree tile coordinates to both geographic (degrees) and
  * Web Mercator (meters) coordinate systems for raster data processing.
- * 
+ *
  * @param level - Quadtree zoom level
  * @param x - Tile column index
- * @param y - Tile row index  
+ * @param y - Tile row index
  * @param globalBounds - Overall tileset bounds in Web Mercator
  * @returns Bounds in both coordinate systems
  */
@@ -487,15 +549,15 @@ export function calculateTileBounds(
 
 /**
  * Create a complete 3D Tiles tileset with recursive quadtree structure
- * 
+ *
  * This is the main entry point for creating a 3D Tiles tileset. It generates
  * a complete quadtree structure up to the specified maximum level, with proper
  * 3D Tiles metadata and geometric error calculations.
- * 
+ *
  * @param bounds - Tileset spatial bounds in Web Mercator [minX, minY, maxX, maxY]
  * @param center - Tileset center point in Web Mercator [x, y]
  * @param minHeight - Minimum terrain elevation in meters
- * @param maxHeight - Maximum terrain elevation in meters  
+ * @param maxHeight - Maximum terrain elevation in meters
  * @param maxLevel - Maximum quadtree subdivision level (0 = root only)
  * @param method - Geometric error calculation method
  * @returns Complete 3D Tiles tileset ready for JSON serialization

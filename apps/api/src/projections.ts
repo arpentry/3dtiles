@@ -31,11 +31,11 @@ export type CoordinatePair = [number, number];
 
 /**
  * Convert Swiss LV95 coordinates to WGS84 geographic coordinates
- * 
+ *
  * Transforms coordinates from the Swiss national coordinate system (LV95)
  * to the global WGS84 coordinate system. LV95 uses an Oblique Mercator
  * projection optimized for Swiss territory.
- * 
+ *
  * @param x - LV95 easting coordinate in meters
  * @param y - LV95 northing coordinate in meters
  * @returns WGS84 coordinates [longitude, latitude] in degrees
@@ -46,11 +46,11 @@ export function LV95toWGS84(x: number, y: number): CoordinatePair {
 
 /**
  * Convert Web Mercator coordinates to WGS84 geographic coordinates
- * 
+ *
  * Transforms coordinates from EPSG:3857 (Web Mercator) projection to
  * WGS84 geographic coordinates. Web Mercator is widely used by web
  * mapping services like Google Maps, OpenStreetMap, and others.
- * 
+ *
  * @param x - Web Mercator easting coordinate in meters
  * @param y - Web Mercator northing coordinate in meters
  * @returns WGS84 coordinates [longitude, latitude] in degrees
@@ -61,11 +61,11 @@ export function EPSG3857toWGS84(x: number, y: number): CoordinatePair {
 
 /**
  * Convert WGS84 geographic coordinates to Web Mercator coordinates
- * 
+ *
  * Transforms coordinates from WGS84 geographic system to EPSG:3857
  * (Web Mercator) projection. This is commonly used for web mapping
  * applications and tile-based mapping systems.
- * 
+ *
  * @param lon - WGS84 longitude in degrees (-180 to +180)
  * @param lat - WGS84 latitude in degrees (-85.0511 to +85.0511)
  * @returns Web Mercator coordinates [x, y] in meters
@@ -76,11 +76,11 @@ export function WGS84toEPSG3857(lon: number, lat: number): CoordinatePair {
 
 /**
  * Convert degrees to radians
- * 
+ *
  * Utility function for angular unit conversion. Commonly used when
  * working with 3D Tiles specification which requires angles in radians,
  * or when performing trigonometric calculations.
- * 
+ *
  * @param deg - Angle in degrees
  * @returns Angle in radians
  */
@@ -90,10 +90,10 @@ export function degToRad(deg: number): number {
 
 /**
  * Convert radians to degrees
- * 
+ *
  * Utility function for angular unit conversion. Useful when converting
  * from mathematical calculations back to human-readable degree format.
- * 
+ *
  * @param rad - Angle in radians
  * @returns Angle in degrees
  */

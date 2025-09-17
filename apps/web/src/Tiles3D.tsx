@@ -7,12 +7,12 @@ import { DebugTilesPlugin } from '3d-tiles-renderer/plugins';
 
 // LOD Colors for level-based visualization
 const LOD_COLORS = [
-  new THREE.Color(0x0000FF), // Level 0 : blue
-  new THREE.Color(0xA300E2), // Level 1 : violet
-  new THREE.Color(0xF60081), // Level 2 : red
-  new THREE.Color(0xDDB500), // Level 3 : orange
-  new THREE.Color(0xDDB500), // Level 4 : yellow
-  new THREE.Color(0x00FF00), // Level 5 : green
+  new THREE.Color(0x0000ff), // Level 0 : blue
+  new THREE.Color(0xa300e2), // Level 1 : violet
+  new THREE.Color(0xf60081), // Level 2 : red
+  new THREE.Color(0xddb500), // Level 3 : orange
+  new THREE.Color(0xddb500), // Level 4 : yellow
+  new THREE.Color(0x00ff00), // Level 5 : green
 ];
 
 // @ts-ignore
@@ -30,26 +30,30 @@ export default function Tiles3D({ url }: { url: string }) {
   const { camera, gl } = useThree();
 
   // 3D Tiles Settings
-  const { errorTarget, maxDepth, displayActiveTiles, geometricErrorMethod } = useControls(
-    '3D Tiles - Settings',
-    {
+  const { errorTarget, maxDepth, displayActiveTiles, geometricErrorMethod } =
+    useControls('3D Tiles - Settings', {
       errorTarget: { value: 4, min: 1, max: 20, step: 1 },
       maxDepth: { value: 10, min: 1, max: 20, step: 1 },
       displayActiveTiles: true,
-      geometricErrorMethod: { value: 'resolution-based', options: ['resolution-based', 'diagonal-based', 'sse-based', 'elevation-based'] },
-    },
-  );
+      geometricErrorMethod: {
+        value: 'resolution-based',
+        options: [
+          'resolution-based',
+          'diagonal-based',
+          'sse-based',
+          'elevation-based',
+        ],
+      },
+    });
 
   // Debug Visualization
-  const { displayBoxBounds, enableLODColoring, enableTopoLines, topoOpacity } = useControls(
-    '3D Tiles - Debug',
-    {
+  const { displayBoxBounds, enableLODColoring, enableTopoLines, topoOpacity } =
+    useControls('3D Tiles - Debug', {
       displayBoxBounds: true,
       enableLODColoring: false,
       enableTopoLines: false,
       topoOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
-    },
-  );
+    });
 
   // Camera Controls
   const { minDistance, cameraRadius, enableDamping } = useControls(
@@ -70,12 +74,14 @@ export default function Tiles3D({ url }: { url: string }) {
     const debugPlugin = new DebugTilesPlugin({
       displayBoxBounds: displayBoxBounds,
       colorMode: enableLODColoring ? 9 : 0, // 9 = CUSTOM_COLOR, 0 = NONE
-      customColorCallback: enableLODColoring ? (tile: any, child: any) => {
-        const colorIndex = tile.__depth % LOD_COLORS.length;
-        if (child && child.material && child.material.color) {
-          child.material.color.copy(LOD_COLORS[colorIndex]);
-        }
-      } : undefined,
+      customColorCallback: enableLODColoring
+        ? (tile: any, child: any) => {
+            const colorIndex = tile.__depth % LOD_COLORS.length;
+            if (child && child.material && child.material.color) {
+              child.material.color.copy(LOD_COLORS[colorIndex]);
+            }
+          }
+        : undefined,
       enabled: true,
     });
 

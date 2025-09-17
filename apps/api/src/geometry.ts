@@ -23,7 +23,7 @@ export interface TileCoordinates {
   y: number;
 }
 
-/** 
+/**
  * Geographic bounding region as used by 3D Tiles 1.1 specification
  * All coordinates are in radians for longitude/latitude, meters for height
  */
@@ -48,7 +48,7 @@ export interface BoundingRegion {
 
 /**
  * Calculate quadtree subdivision factor for a given level
- * 
+ *
  * @param level - Quadtree level (0 = root)
  * @returns Number of tiles per dimension at this level (2^level)
  */
@@ -58,7 +58,7 @@ function calculateQuadtreeDivision(level: number): number {
 
 /**
  * Clamp tile coordinates to valid range for the given level
- * 
+ *
  * @param coordinate - Tile coordinate to clamp
  * @param maxValue - Maximum valid coordinate (exclusive)
  * @returns Clamped coordinate
@@ -73,10 +73,10 @@ function clampTileCoordinate(coordinate: number, maxValue: number): number {
 
 /**
  * Compute the bounding region of a quadtree tile in geographic coordinates
- * 
+ *
  * Calculates the geographic bounds of a specific tile within a quadtree
  * hierarchy. Supports optional height subdivision for 3D applications.
- * 
+ *
  * @param root - Full-extent region for level 0 (root tile bounds)
  * @param level - 0-based quadtree level
  * @param x - Tile column index (0 ≤ x < 2^level)
@@ -112,11 +112,11 @@ export function tileToRegion(
 
 /**
  * Find tile coordinates that contain a given geographic point
- * 
+ *
  * Converts a longitude/latitude point to tile coordinates within
  * a quadtree at the specified level. Useful for spatial indexing
  * and tile-based data queries.
- * 
+ *
  * @param root - The bounding region of the root tile
  * @param level - Quadtree level (0 = root)
  * @param lon - Longitude in radians (WGS84)
@@ -152,11 +152,11 @@ export function lonLatToTile(
 
 /**
  * Compute Web Mercator tile bounds and convert to geographic bounding region
- * 
+ *
  * Creates square tiles in Web Mercator projection for consistent pixel density,
  * then converts the bounds to WGS84 radians for 3D Tiles compatibility.
  * This approach ensures proper tile pyramid geometry.
- * 
+ *
  * @param rootBounds - Full-extent bounds in EPSG:3857 [minX, minY, maxX, maxY]
  * @param level - 0-based quadtree level
  * @param x - Tile column index (0 ≤ x < 2^level)
@@ -200,11 +200,11 @@ export function tileToRegionSquare(
 
 /**
  * Create square bounding box from rectangular bounds
- * 
+ *
  * Expands rectangular bounds to create a square bounding box centered
  * on the original bounds. This ensures proper TMS tile pyramid geometry
  * with consistent aspect ratios and prevents distortion.
- * 
+ *
  * @param bbox - Input bounds [minX, minY, maxX, maxY]
  * @returns Square bounds [minX, minY, maxX, maxY]
  */
@@ -228,16 +228,16 @@ export function createSquareBounds(bbox: Bounds): Bounds {
 
 /**
  * Get standard Web Mercator bounds for Switzerland
- * 
+ *
  * Returns pre-calculated square bounds optimized for Swiss territory
  * coverage. These bounds ensure proper tile pyramid geometry and
  * efficient spatial indexing for Swiss geospatial data.
- * 
+ *
  * @returns Square Web Mercator bounds for Switzerland [minX, minY, maxX, maxY]
  */
 export function getSwissWebMercatorBounds(): Bounds {
   const [westDeg, southDeg, eastDeg, northDeg] = SWITZERLAND_WGS84_BOUNDS;
-  
+
   // Convert WGS84 bounds to Web Mercator
   const [minX, minY] = WGS84toEPSG3857(westDeg, southDeg);
   const [maxX, maxY] = WGS84toEPSG3857(eastDeg, northDeg);

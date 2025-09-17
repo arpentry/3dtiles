@@ -37,19 +37,22 @@ export const LV95_CRS = 'LV95';
 export const WEB_MERCATOR_CRS = 'EPSG:3857';
 
 /** WGS84 (World Geodetic System 1984) projection definition */
-export const WGS84_PROJ_DEF = '+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees';
+export const WGS84_PROJ_DEF =
+  '+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees';
 
-/** 
+/**
  * Swiss LV95 (Landesvermessung 1995) projection definition
  * Official Swiss coordinate system using Oblique Mercator projection
  */
-export const LV95_PROJ_DEF = '+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0,0,0,0 +units=m +no_defs';
+export const LV95_PROJ_DEF =
+  '+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0,0,0,0 +units=m +no_defs';
 
-/** 
+/**
  * Web Mercator (EPSG:3857) projection definition
  * Spherical Mercator projection used by web mapping services
  */
-export const WEB_MERCATOR_PROJ_DEF = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
+export const WEB_MERCATOR_PROJ_DEF =
+  '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
 
 // ============================================================================
 // GEOGRAPHIC BOUNDS CONSTANTS
@@ -62,7 +65,9 @@ export const MIN_ELEVATION = -10000;
 export const MAX_ELEVATION = 10000;
 
 /** Switzerland WGS84 bounds: [west, south, east, north] in degrees */
-export const SWITZERLAND_WGS84_BOUNDS = [5.95587, 45.81802, 10.49203, 47.80838] as const;
+export const SWITZERLAND_WGS84_BOUNDS = [
+  5.95587, 45.81802, 10.49203, 47.80838,
+] as const;
 
 // ============================================================================
 // TILE PROCESSING CONSTANTS
@@ -104,7 +109,9 @@ export const PNG_MIME_TYPE = 'image/png';
 export const GLB_CONTENT_TYPE = 'model/gltf-binary';
 
 /** Default base color for terrain materials (white) */
-export const DEFAULT_BASE_COLOR: [number, number, number, number] = [1, 1, 1, 1];
+export const DEFAULT_BASE_COLOR: [number, number, number, number] = [
+  1, 1, 1, 1,
+];
 
 /** Default roughness factor for terrain surfaces (semi-glossy) */
 export const DEFAULT_ROUGHNESS_FACTOR = 0.95;

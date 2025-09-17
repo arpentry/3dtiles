@@ -26,6 +26,9 @@ importers:
       eslint-config-prettier:
         specifier: ^10.1.8
         version: 10.1.8(eslint@9.32.0)
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@24.2.0)(@vitest/ui@3.2.4)(jsdom@26.1.0)
