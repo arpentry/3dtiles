@@ -180,6 +180,7 @@ export async function readElevationDataFromGeoTiff(
     bbox: clampedBbox,
     width: tileSize + 1,
     height: tileSize + 1,
+    resampleMethod: DEFAULT_RESAMPLE_METHOD,
     fillValue: ELEVATION_NO_DATA,
   });
 
