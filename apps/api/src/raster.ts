@@ -169,8 +169,6 @@ export async function readElevationDataFromGeoTiff(
   const tiff = await fromUrl(geoTiffUrl);
   const image = await tiff.getImage();
   const imageBbox = image.getBoundingBox() as Bounds;
-  const noDataValue = image.getGDALNoData();
-  console.log('noDataValue', noDataValue);
 
   const clampedBbox = computeExpandedClampedBounds(
     imageBbox,

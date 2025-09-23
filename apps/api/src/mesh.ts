@@ -201,23 +201,11 @@ export function computeVertexNormals(
  * Web Mercator to Three.js coordinates, with proper centering and axis mapping.
  * Also generates UV coordinates for texture mapping.
  *
- * Why neighbor invalidation around no-data values:
- * Elevation rasters often contain no-data cells at dataset edges or voids.
- * If we only drop the exact no-data vertices, triangles adjacent to those
- * cells can create T-junctions, razor-thin slivers, or cracks along the
- * boundary. To prevent visual artifacts and unstable normals, we conservatively
- * expand the invalid region by a small Chebyshev radius around each no-data
- * vertex and mark those vertices as invalid too. These vertices are mapped to
- * -1 in `vertexMap`, and downstream triangle building skips any triangle that
- * references them. The radius is configurable so callers can tune edge cleanup
- * versus mesh coverage depending on their dataset.
- *
  * @param vertices - Martini vertex coordinates in grid space
  * @param terrainGrid - Elevation grid used for height lookup
  * @param clampedBbox - Spatial bounds of the tile [minX, minY, maxX, maxY]
  * @param tilesetCenter - Center point of the tileset [x, y]
  * @param tileSize - Size of the tile in pixels
- * @param neighborRadius - Chebyshev radius to invalidate neighbors of no-data vertices (default 2)
  * @returns Mesh geometry with positions, UVs, and elevation bounds
  */
 export function mapCoordinates(
@@ -226,7 +214,6 @@ export function mapCoordinates(
   clampedBbox: number[],
   tilesetCenter: [number, number],
   tileSize: number,
-  neighborRadius: number = 2,
 ): MeshGeometry {
   const pos: number[] = [];
   const uvs: number[] = [];
@@ -243,50 +230,17 @@ export function mapCoordinates(
   let minElevation = Infinity;
   let maxElevation = -Infinity;
 
-  // Build lookup from grid coord -> vertex index
-  const coordKeyToVertexIndex = new Map<string, number>();
-  for (let i = 0; i < vertices.length; i += VERTEX_COMPONENTS_2D) {
-    const gx = vertices[i];
-    const gy = vertices[i + 1];
-    coordKeyToVertexIndex.set(`${gx},${gy}`, i / VERTEX_COMPONENTS_2D);
-  }
-
-  // Precompute set of invalid (no-data expanded by neighborRadius) vertex indices
-  const invalidVertexIndices = new Set<number>();
-  if (neighborRadius > 0) {
-    for (let i = 0; i < vertices.length; i += VERTEX_COMPONENTS_2D) {
-      const gx = vertices[i];
-      const gy = vertices[i + 1];
-      const elevation = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
-      if (elevation !== ELEVATION_NO_DATA) continue;
-
-      // Mark neighbors within Chebyshev distance <= neighborRadius
-      for (let dy = -neighborRadius; dy <= neighborRadius; dy++) {
-        for (let dx = -neighborRadius; dx <= neighborRadius; dx++) {
-          const ngx = Math.max(0, Math.min(tileSize, gx + dx));
-          const ngy = Math.max(0, Math.min(tileSize, gy + dy));
-          const vIdx = coordKeyToVertexIndex.get(`${ngx},${ngy}`);
-          if (vIdx !== undefined) invalidVertexIndices.add(vIdx);
-        }
-      }
-    }
-  }
-
   for (let i = 0; i < vertices.length; i += VERTEX_COMPONENTS_2D) {
     const gx = vertices[i]; // Grid X (0 to TILE_SIZE)
     const gy = vertices[i + 1]; // Grid Y (0 to TILE_SIZE)
-    const vertexIndex = i / VERTEX_COMPONENTS_2D;
     const elevation = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
 
-    if (
-      elevation === ELEVATION_NO_DATA ||
-      invalidVertexIndices.has(vertexIndex)
-    ) {
-      vMap.set(vertexIndex, -1);
+    if (elevation === ELEVATION_NO_DATA) {
+      vMap.set(i / VERTEX_COMPONENTS_2D, -1);
       continue;
     }
 
-    vMap.set(vertexIndex, next);
+    vMap.set(i / VERTEX_COMPONENTS_2D, next);
 
     // COORDINATE SYSTEM TRANSFORMATION:
     // Grid coordinates → Web Mercator → Centered Three.js coordinates
