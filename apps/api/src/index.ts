@@ -215,6 +215,7 @@ app.get('/tiles/:level/:x/:y/tile.glb', tileCache, async (c: Context) => {
     const meshGeometry = mapCoordinates(
       terrainMesh.vertices,
       terrainMesh.terrainGrid,
+      terrainMesh.originalElevationData,
       elevationBbox,
       tilesetCenter,
       TILE_SIZE,

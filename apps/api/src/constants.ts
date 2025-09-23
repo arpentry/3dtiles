@@ -87,7 +87,7 @@ export const TILE_CACHE_DURATION = 604800;
 // ============================================================================
 
 /** Default no-data value for elevation rasters */
-export const ELEVATION_NO_DATA = -9999;
+export const ELEVATION_NO_DATA = Number.NaN;
 
 /** Default mesh error threshold for terrain simplification */
 export const DEFAULT_MESH_ERROR = 10;

@@ -1,7 +1,6 @@
 // @ts-ignore – no types
 import Martini from '@mapbox/martini';
 import {
-  ELEVATION_NO_DATA,
   DEFAULT_MESH_ERROR,
   VERTEX_COMPONENTS_3D,
   TRIANGLE_VERTICES,
@@ -18,8 +17,10 @@ export interface TerrainMesh {
   vertices: Uint16Array;
   /** Triangle indices referencing vertices */
   triangles: Uint16Array;
-  /** Elevation grid data used for triangulation */
+  /** Elevation grid data used for triangulation (NaN values replaced) */
   terrainGrid: Float32Array;
+  /** Original elevation data with NaN values preserved */
+  originalElevationData: TypedArray;
 }
 
 /** Processed mesh geometry ready for 3D rendering */
@@ -115,7 +116,8 @@ function computeFaceNormal(
  *
  * Creates a simplified triangular mesh from elevation data using the Martini
  * algorithm, which performs adaptive triangulation based on terrain features.
- * The output includes vertices, triangles, and the processed terrain grid.
+ * NaN values in the input data are replaced with a neutral elevation value
+ * to prevent triangulation issues, but are tracked for proper handling later.
  *
  * @param elevationData - Elevation values as a typed array
  * @param tileSize - Size of the tile in pixels (grid will be tileSize + 1)
@@ -128,12 +130,31 @@ export function generateTerrainMesh(
   const gridSize = tileSize + 1;
   const terrainGrid = new Float32Array(gridSize * gridSize);
 
-  // Fill grid from elevation data
+  // Calculate average elevation for non-NaN values to use as replacement
+  let validSum = 0;
+  let validCount = 0;
+
+  for (let i = 0; i < elevationData.length; i++) {
+    const value = Number(elevationData[i]);
+    if (!Number.isNaN(value)) {
+      validSum += value;
+      validCount++;
+    }
+  }
+
+  // Use average elevation or 0 if no valid data
+  const neutralElevation = validCount > 0 ? validSum / validCount : 0;
+
+  // Fill grid from elevation data, replacing NaN with neutral elevation
   for (let row = 0; row < gridSize; ++row) {
     for (let col = 0; col < gridSize; ++col) {
       const src = row * gridSize + col;
       const dst = row * gridSize + col;
-      terrainGrid[dst] = Number(elevationData[src]);
+      const elevation = Number(elevationData[src]);
+
+      // Replace NaN with neutral elevation for Martini triangulation
+      // The original NaN values will be properly handled in mapCoordinates
+      terrainGrid[dst] = Number.isNaN(elevation) ? neutralElevation : elevation;
     }
   }
 
@@ -145,6 +166,7 @@ export function generateTerrainMesh(
     vertices,
     triangles,
     terrainGrid,
+    originalElevationData: elevationData,
   };
 }
 
@@ -202,7 +224,8 @@ export function computeVertexNormals(
  * Also generates UV coordinates for texture mapping.
  *
  * @param vertices - Martini vertex coordinates in grid space
- * @param terrainGrid - Elevation grid used for height lookup
+ * @param terrainGrid - Elevation grid used for height lookup (NaN-cleaned for Martini)
+ * @param originalElevationData - Original elevation data to check for NaN values
  * @param clampedBbox - Spatial bounds of the tile [minX, minY, maxX, maxY]
  * @param tilesetCenter - Center point of the tileset [x, y]
  * @param tileSize - Size of the tile in pixels
@@ -211,6 +234,7 @@ export function computeVertexNormals(
 export function mapCoordinates(
   vertices: Uint16Array,
   terrainGrid: Float32Array,
+  originalElevationData: TypedArray,
   clampedBbox: number[],
   tilesetCenter: [number, number],
   tileSize: number,
@@ -233,9 +257,13 @@ export function mapCoordinates(
   for (let i = 0; i < vertices.length; i += VERTEX_COMPONENTS_2D) {
     const gx = vertices[i]; // Grid X (0 to TILE_SIZE)
     const gy = vertices[i + 1]; // Grid Y (0 to TILE_SIZE)
-    const elevation = terrainGrid[Math.floor(gy) * gridSize + Math.floor(gx)];
+    const gridIndex = Math.floor(gy) * gridSize + Math.floor(gx);
 
-    if (elevation === ELEVATION_NO_DATA) {
+    // Check original elevation data for NaN (the source of truth)
+    const originalElevation = Number(originalElevationData[gridIndex]);
+    const elevation = terrainGrid[gridIndex];
+
+    if (Number.isNaN(originalElevation)) {
       vMap.set(i / VERTEX_COMPONENTS_2D, -1);
       continue;
     }

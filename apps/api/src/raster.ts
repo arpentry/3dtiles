@@ -181,8 +181,24 @@ export async function readElevationDataFromGeoTiff(
     width: tileSize + 1,
     height: tileSize + 1,
     resampleMethod: DEFAULT_RESAMPLE_METHOD,
-    fillValue: ELEVATION_NO_DATA,
+    fillValue: Number.NaN,
   });
+
+  // Iterate through raster pixels to validate and process data
+  // const width = raster.width as number;
+  // const height = raster.height as number;
+  // const data = raster[0] as TypedArray;
+
+  // for (let y = 0; y < height; y++) {
+  //   for (let x = 0; x < width; x++) {
+  //     const pixelIndex = y * width + x;
+  //     const value = data[pixelIndex];
+
+  //     if (!isNaN(Number(value))) {
+  //       console.log('value', value);
+  //     }
+  //   }
+  // }
 
   if (!raster || !raster[0] || typeof raster[0] === 'number') {
     throw new Error('No elevation data available');

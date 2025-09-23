@@ -150,11 +150,15 @@ process_with_gdal() {
     
     # Build VRT from original .tif files only (exclude _web_mercator files)
     find ./ -name "*.tif" -type f | grep -v "_web_mercator" > ./files.txt
-    gdalbuildvrt -input_file_list ./files.txt ./files.vrt
+    # Build VRT and set both source and VRT nodata to NaN
+    gdalbuildvrt -srcnodata nan -vrtnodata nan -input_file_list ./files.txt ./files.vrt
 
     # Create combined GeoTIFF
+    # Translate to a COG with Float32 and NoData as NaN
     gdal_translate files.vrt "$output_name.tif" \
         -of COG \
+        -ot Float32 \
+        -a_nodata nan \
         -co COMPRESS=DEFLATE \
         -co BLOCKSIZE=512 \
         -co OVERVIEWS=IGNORE_EXISTING \
@@ -162,8 +166,12 @@ process_with_gdal() {
         -co BIGTIFF=YES
     
     # Create Web Mercator projection
+    # Reproject to Web Mercator, mapping -9999 to NaN and keeping Float32
     gdalwarp -overwrite "$output_name.tif" "${output_name}_web_mercator.tif" \
         -t_srs EPSG:3857 \
+        -ot Float32 \
+        -srcnodata -9999 \
+        -dstnodata nan \
         -r bilinear \
         -of COG \
         -co TILING_SCHEME=GoogleMapsCompatible \
