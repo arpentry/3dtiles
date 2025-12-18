@@ -101,13 +101,10 @@ export default function Tiles3D({ url }: { url: string }) {
       groupRef.current.add(tiles.group as unknown as THREE.Group);
     }
 
-    // Pass the tilesRenderer directly to EnvironmentControls to isolate it from other scene elements
-    const controls = new EnvironmentControls(
-      undefined,
-      camera,
-      gl.domElement,
-      tiles,
-    );
+    // Initialize EnvironmentControls with the scene and camera
+    const controls = new EnvironmentControls(undefined, camera, gl.domElement);
+    // Set the scene for the tiles renderer
+    controls.setScene(groupRef.current!);
     controls.minDistance = minDistance;
     controls.cameraRadius = cameraRadius;
     controls.enableDamping = enableDamping;
@@ -138,10 +135,6 @@ export default function Tiles3D({ url }: { url: string }) {
   // Update tilesRenderer every frame
   useFrame(() => {
     if (tilesRendererRef.current) {
-      const debugTilesPlugin = tilesRendererRef.current.getPluginByName(
-        'DEBUG_TILES_PLUGIN',
-      ) as DebugTilesPlugin;
-
       if (enableTopoLines) {
         const topoLinesPlugin = tilesRendererRef.current.getPluginByName(
           'TOPO_LINES_PLUGIN',
